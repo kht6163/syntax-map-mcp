@@ -34,6 +34,7 @@ type SearchSymbolsResult =
           path: string;
           language: SupportedLanguage;
           snippet: string;
+          context?: SnippetContext;
         }
       >;
     }
@@ -52,6 +53,7 @@ type IndexedDefinitionResult =
           path: string;
           language: SupportedLanguage;
           snippet: string;
+          context?: SnippetContext;
         }
       >;
     }
@@ -72,6 +74,7 @@ type IndexedReferencesResult =
         nodeType: string;
         range: SourceRange;
         snippet: string;
+        context?: SnippetContext;
       }>;
     }
   | ToolFailure;
@@ -108,6 +111,16 @@ type IndexReadState = {
   isStale: boolean;
   staleFiles: number;
   refreshed: boolean;
+};
+
+type ContextOptions = {
+  contextBefore?: number;
+  contextAfter?: number;
+};
+
+type SnippetContext = {
+  before: string[];
+  after: string[];
 };
 
 const INDEX_DIRECTORY = '.syntax-map-mcp';
@@ -423,8 +436,29 @@ function rowValue(row: Record<string, SqlValue>, key: string): SqlValue {
   return row[key];
 }
 
-function lineAt(text: string, row: number): string {
-  return text.split(/\r?\n/)[row] ?? '';
+function snippetDetails(
+  text: string | undefined,
+  row: number,
+  options: ContextOptions
+): { snippet: string; context?: SnippetContext } {
+  if (text === undefined) return { snippet: '' };
+
+  const lines = text.split(/\r?\n/);
+  const snippet = lines[row] ?? '';
+  const beforeCount = options.contextBefore ?? 0;
+  const afterCount = options.contextAfter ?? 0;
+
+  if (beforeCount === 0 && afterCount === 0) {
+    return { snippet };
+  }
+
+  return {
+    snippet,
+    context: {
+      before: lines.slice(Math.max(0, row - beforeCount), row),
+      after: lines.slice(row + 1, row + 1 + afterCount)
+    }
+  };
 }
 
 export async function indexWorkspace(workspace: Workspace): Promise<IndexResult> {
@@ -542,7 +576,7 @@ export async function findIndexedDefinitions(
     kinds?: CodeSymbol['kind'][];
     limit?: number;
     refreshIfStale?: boolean;
-  }
+  } & ContextOptions
 ): Promise<IndexedDefinitionResult> {
   let readState: IndexReadState | undefined;
 
@@ -585,7 +619,12 @@ export async function findIndexedDefinitions(
       params
     );
     const definitions: Array<
-      CodeSymbol & { path: string; language: SupportedLanguage; snippet: string }
+      CodeSymbol & {
+        path: string;
+        language: SupportedLanguage;
+        snippet: string;
+        context?: SnippetContext;
+      }
     > = [];
 
     try {
@@ -632,7 +671,7 @@ export async function findIndexedDefinitions(
                     column: Number(selectionEndColumn)
                   }
                 },
-          snippet: file.ok ? lineAt(file.text, startRow) : ''
+          ...snippetDetails(file.ok ? file.text : undefined, startRow, input)
         });
       }
     } finally {
@@ -661,7 +700,7 @@ export async function findIndexedReferences(
     name: string;
     limit?: number;
     refreshIfStale?: boolean;
-  }
+  } & ContextOptions
 ): Promise<IndexedReferencesResult> {
   let readState: IndexReadState | undefined;
 
@@ -694,6 +733,7 @@ export async function findIndexedReferences(
       nodeType: string;
       range: SourceRange;
       snippet: string;
+      context?: SnippetContext;
     }> = [];
 
     try {
@@ -718,7 +758,7 @@ export async function findIndexedReferences(
               column: Number(rowValue(row, 'end_column'))
             }
           },
-          snippet: file.ok ? lineAt(file.text, startRow) : ''
+          ...snippetDetails(file.ok ? file.text : undefined, startRow, input)
         });
       }
     } finally {
@@ -748,7 +788,7 @@ export async function searchSymbols(
     kinds?: CodeSymbol['kind'][];
     limit?: number;
     refreshIfStale?: boolean;
-  }
+  } & ContextOptions
 ): Promise<SearchSymbolsResult> {
   let readState: IndexReadState | undefined;
 
@@ -791,7 +831,12 @@ export async function searchSymbols(
       params
     );
     const symbols: Array<
-      CodeSymbol & { path: string; language: SupportedLanguage; snippet: string }
+      CodeSymbol & {
+        path: string;
+        language: SupportedLanguage;
+        snippet: string;
+        context?: SnippetContext;
+      }
     > = [];
 
     try {
@@ -838,7 +883,7 @@ export async function searchSymbols(
                     column: Number(selectionEndColumn)
                   }
                 },
-          snippet: file.ok ? lineAt(file.text, startRow) : ''
+          ...snippetDetails(file.ok ? file.text : undefined, startRow, input)
         });
       }
     } finally {

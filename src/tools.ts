@@ -38,6 +38,7 @@ type RunQueryInput = {
 
 const symbolKindSchema = z.enum(['function', 'method', 'class', 'variable', 'interface', 'type']);
 const detailSchema = z.enum(['compact', 'full']);
+const contextLineCountSchema = z.number().int().min(0).max(10);
 
 export function createToolHandlers(workspace: Workspace) {
   return {
@@ -110,6 +111,8 @@ export function createToolHandlers(workspace: Workspace) {
       kinds?: CodeSymbol['kind'][];
       limit?: number;
       refreshIfStale?: boolean;
+      contextBefore?: number;
+      contextAfter?: number;
     }): Promise<CallToolResult> {
       const result = await searchIndexedSymbols(workspace, input);
       if (!result.ok) return toolFailure(result.error.code, result.error.message);
@@ -121,6 +124,8 @@ export function createToolHandlers(workspace: Workspace) {
       kinds?: CodeSymbol['kind'][];
       limit?: number;
       refreshIfStale?: boolean;
+      contextBefore?: number;
+      contextAfter?: number;
     }): Promise<CallToolResult> {
       const result = await findIndexedDefinitions(workspace, input);
       if (!result.ok) return toolFailure(result.error.code, result.error.message);
@@ -131,6 +136,8 @@ export function createToolHandlers(workspace: Workspace) {
       name: string;
       limit?: number;
       refreshIfStale?: boolean;
+      contextBefore?: number;
+      contextAfter?: number;
     }): Promise<CallToolResult> {
       const result = await findIndexedReferences(workspace, input);
       if (!result.ok) return toolFailure(result.error.code, result.error.message);
@@ -250,7 +257,9 @@ export function registerTools(server: McpServer, workspace: Workspace): void {
         query: z.string(),
         kinds: z.array(symbolKindSchema).optional(),
         limit: z.number().int().positive().max(500).optional(),
-        refreshIfStale: z.boolean().optional()
+        refreshIfStale: z.boolean().optional(),
+        contextBefore: contextLineCountSchema.optional(),
+        contextAfter: contextLineCountSchema.optional()
       }
     },
     handlers.searchSymbols
@@ -265,7 +274,9 @@ export function registerTools(server: McpServer, workspace: Workspace): void {
         name: z.string(),
         kinds: z.array(symbolKindSchema).optional(),
         limit: z.number().int().positive().max(500).optional(),
-        refreshIfStale: z.boolean().optional()
+        refreshIfStale: z.boolean().optional(),
+        contextBefore: contextLineCountSchema.optional(),
+        contextAfter: contextLineCountSchema.optional()
       }
     },
     handlers.findIndexedDefinition
@@ -279,7 +290,9 @@ export function registerTools(server: McpServer, workspace: Workspace): void {
       inputSchema: {
         name: z.string(),
         limit: z.number().int().positive().max(500).optional(),
-        refreshIfStale: z.boolean().optional()
+        refreshIfStale: z.boolean().optional(),
+        contextBefore: contextLineCountSchema.optional(),
+        contextAfter: contextLineCountSchema.optional()
       }
     },
     handlers.findIndexedReferences

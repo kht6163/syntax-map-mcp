@@ -11,6 +11,11 @@ export type FileSummary = {
   symbols: CodeSymbol[];
   imports: string[];
   exports: string[];
+  sources: {
+    symbols: 'ast';
+    imports: 'ast';
+    exports: 'ast';
+  };
 };
 
 export async function summarizeFile(
@@ -30,7 +35,12 @@ export async function summarizeFile(
     lineCount: countLines(file.text),
     symbols: listSymbols(parsed),
     imports: findImports(parsed),
-    exports: findExports(file.text)
+    exports: findExports(parsed),
+    sources: {
+      symbols: 'ast',
+      imports: 'ast',
+      exports: 'ast'
+    }
   };
 }
 
@@ -43,7 +53,7 @@ function countLines(text: string): number {
 function findImports(parsed: ParsedSourceFile): string[] {
   return parsed.tree.rootNode.namedChildren
     .filter(node => isImportNode(parsed.language, node.type))
-    .map(node => node.text.trim());
+    .map(node => firstLine(node.text));
 }
 
 function isImportNode(language: SupportedLanguage, nodeType: string): boolean {
@@ -57,13 +67,23 @@ function isImportNode(language: SupportedLanguage, nodeType: string): boolean {
   }
 }
 
-function findExports(text: string): string[] {
-  return trimmedLines(text).filter(line => line.startsWith('export '));
+function findExports(parsed: ParsedSourceFile): string[] {
+  return parsed.tree.rootNode.namedChildren
+    .filter(node => isExportNode(parsed.language, node.type))
+    .map(node => firstLine(node.text));
 }
 
-function trimmedLines(text: string): string[] {
-  return text
-    .split(/\r\n|\r|\n/)
-    .map(line => line.trim())
-    .filter(Boolean);
+function isExportNode(language: SupportedLanguage, nodeType: string): boolean {
+  switch (language) {
+    case 'javascript':
+    case 'typescript':
+    case 'tsx':
+      return nodeType === 'export_statement';
+    case 'python':
+      return false;
+  }
+}
+
+function firstLine(text: string): string {
+  return text.split(/\r\n|\r|\n/, 1)[0].trim();
 }

@@ -33,7 +33,7 @@ npx -y syntax-map-mcp --workspace-root /path/to/workspace
 - `list_symbols`: 파일 하나의 top-level 심볼 목록 반환
 - `find_definition`: 여러 파일에서 이름과 선택적 kind로 정의 검색
 - `find_references`: 여러 파일에서 식별자 참조 검색
-- `summarize_file`: 파일 언어, 라인 수, imports, exports, symbols 요약
+- `summarize_file`: 파일 언어, 라인 수, AST 기반 imports, exports, symbols 요약
 - `run_query`: 파일 하나에 tree-sitter query 실행
 - `build_context`: 여러 파일 요약을 markdown 컨텍스트로 구성
 - `index_workspace`: 지원 소스 파일을 파싱해 SQLite 심볼/참조 인덱스 생성 또는 갱신
@@ -47,7 +47,9 @@ npx -y syntax-map-mcp --workspace-root /path/to/workspace
 
 `index_workspace`는 `workspaceRoot` 아래의 `.syntax-map-mcp/index.sqlite`에 인덱스를 저장합니다. 인덱싱 대상은 `.js`, `.jsx`, `.ts`, `.tsx`, `.py` 파일이며, `.git`, `.syntax-map-mcp`, `dist`, `node_modules` 디렉터리는 제외합니다.
 
-파일 변경 여부는 `mtimeMs`와 `size`로 판단합니다. 다시 `index_workspace`를 호출하면 변경된 파일만 재파싱하고, 삭제된 파일은 인덱스에서 제거합니다. `search_symbols`, `find_indexed_definition`, `find_indexed_references`는 `isStale`, `staleFiles`, `refreshed`를 반환해 검색 결과가 최신 인덱스 기반인지 알려줍니다. 세 도구에 `refreshIfStale: true`를 전달하면 stale 파일이 있을 때 먼저 인덱스를 갱신한 뒤 검색합니다. 인덱스 검색 도구는 인덱스에 저장된 위치를 조회한 뒤 현재 파일에서 해당 줄 snippet을 읽어 반환합니다. 자동 watch 모드는 아직 포함하지 않았습니다.
+파일 변경 여부는 `mtimeMs`와 `size`로 판단합니다. 다시 `index_workspace`를 호출하면 변경된 파일만 재파싱하고, 삭제된 파일은 인덱스에서 제거합니다. `search_symbols`, `find_indexed_definition`, `find_indexed_references`는 `isStale`, `staleFiles`, `refreshed`를 반환해 검색 결과가 최신 인덱스 기반인지 알려줍니다. 세 도구에 `refreshIfStale: true`를 전달하면 stale 파일이 있을 때 먼저 인덱스를 갱신한 뒤 검색합니다. 인덱스 검색 도구는 인덱스에 저장된 위치를 조회한 뒤 현재 파일에서 해당 줄 snippet을 읽어 반환합니다. `contextBefore`, `contextAfter`를 0-10 사이 정수로 전달하면 snippet 주변 라인도 함께 반환합니다. 자동 watch 모드는 아직 포함하지 않았습니다.
+
+`summarize_file`은 `sources` 필드로 `symbols`, `imports`, `exports`가 어떤 방식으로 추출되었는지 반환합니다.
 
 ## 변경 이력
 

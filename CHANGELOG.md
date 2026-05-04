@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 0.1.2 - 2026-05-04
+
+- `summarize_file`의 `exports` 추출을 AST 기반으로 변경해 문자열 내부 텍스트가 export로 잘못 반환되지 않도록 했습니다.
+- `summarize_file` 응답에 `sources`를 추가해 `symbols`, `imports`, `exports` 추출 방식이 AST 기반임을 확인할 수 있게 했습니다.
+- 인덱스 검색 도구에 `contextBefore`, `contextAfter` 옵션을 추가해 snippet 주변 라인을 함께 조회할 수 있게 했습니다.
+- 패키지 버전을 `0.1.2`로 올렸습니다.
 - `search_symbols` 결과에 현재 파일의 해당 줄 `snippet`을 추가했습니다.
 - `find_indexed_references`를 추가해 SQLite 인덱스에서 식별자 참조를 검색할 수 있게 했습니다.
 - `search_symbols`, `find_indexed_definition`, `find_indexed_references`가 `isStale`, `staleFiles`, `refreshed`를 반환하도록 했습니다.

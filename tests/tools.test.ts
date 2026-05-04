@@ -196,6 +196,26 @@ describe('createToolHandlers', () => {
         })
       );
 
+      const definitionWithContext = await handlers.findIndexedDefinition({
+        name: 'UserService',
+        contextBefore: 2,
+        contextAfter: 1
+      });
+      expect(definitionWithContext.structuredContent).toEqual(
+        expect.objectContaining({
+          ok: true,
+          definitions: [
+            expect.objectContaining({
+              snippet: 'export class UserService {',
+              context: {
+                before: ['export type UserId = User[\'id\'];', ''],
+                after: ['  constructor(private readonly users: User[]) {}']
+              }
+            })
+          ]
+        })
+      );
+
       const referencesResult = await handlers.findIndexedReferences({ name: 'formatUser' });
       expect(referencesResult.structuredContent).toEqual(
         expect.objectContaining({

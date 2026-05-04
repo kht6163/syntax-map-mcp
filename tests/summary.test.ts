@@ -19,6 +19,11 @@ describe('summarizeFile', () => {
       expect(summary.language).toBe('typescript');
       expect(summary.symbols.map(symbol => symbol.name)).toContain('UserService');
       expect(summary.lineCount).toBe(sampleLineCount);
+      expect(summary.sources).toEqual({
+        symbols: 'ast',
+        imports: 'ast',
+        exports: 'ast'
+      });
     }
   });
 
@@ -79,6 +84,33 @@ describe('summarizeFile', () => {
       expect(summary.ok).toBe(true);
       if (summary.ok) {
         expect(summary.imports).toEqual(['import os']);
+      }
+    } finally {
+      await rm(workspaceRoot, { recursive: true, force: true });
+    }
+  });
+
+  it('excludes non-export text from file exports', async () => {
+    const workspaceRoot = await mkdtemp(path.join(os.tmpdir(), 'tree-sitter-summary-exports-'));
+
+    try {
+      await writeFile(
+        path.join(workspaceRoot, 'messages.ts'),
+        [
+          'const message = `',
+          'export fakeDeclaration',
+          '`;',
+          '',
+          'export { message };'
+        ].join('\n')
+      );
+
+      const workspace = await createWorkspace(workspaceRoot);
+      const summary = await summarizeFile(workspace, 'messages.ts');
+
+      expect(summary.ok).toBe(true);
+      if (summary.ok) {
+        expect(summary.exports).toEqual(['export { message };']);
       }
     } finally {
       await rm(workspaceRoot, { recursive: true, force: true });
