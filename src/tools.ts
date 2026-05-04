@@ -92,8 +92,16 @@ export function createToolHandlers(workspace: Workspace) {
     },
 
     async buildContext(input: {
-      paths: string[];
+      paths?: string[];
       detail: 'compact' | 'full';
+      indexedSearch?: {
+        query: string;
+        kinds?: CodeSymbol['kind'][];
+        limit?: number;
+        refreshIfStale?: boolean;
+        contextBefore?: number;
+        contextAfter?: number;
+      };
     }): Promise<CallToolResult> {
       const result = await buildContextAnalysis(workspace, input);
       if (!result.ok) return toolFailure(result.error.code, result.error.message);
@@ -234,8 +242,18 @@ export function registerTools(server: McpServer, workspace: Workspace): void {
       title: 'Build context',
       description: 'Build markdown context for supported source files.',
       inputSchema: {
-        paths: z.array(z.string()),
-        detail: detailSchema
+        paths: z.array(z.string()).optional(),
+        detail: detailSchema,
+        indexedSearch: z
+          .object({
+            query: z.string(),
+            kinds: z.array(symbolKindSchema).optional(),
+            limit: z.number().int().positive().max(500).optional(),
+            refreshIfStale: z.boolean().optional(),
+            contextBefore: contextLineCountSchema.optional(),
+            contextAfter: contextLineCountSchema.optional()
+          })
+          .optional()
       }
     },
     handlers.buildContext

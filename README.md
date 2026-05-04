@@ -178,6 +178,41 @@ Python은 JavaScript/TypeScript처럼 명시적인 `export` 문법이 없으므�
 }
 ```
 
+### build_context
+
+파일 경로 기반 입력:
+
+```json
+{
+  "paths": ["src/users.ts", "src/index.ts"],
+  "detail": "compact"
+}
+```
+
+인덱스 검색 기반 입력:
+
+```json
+{
+  "detail": "compact",
+  "indexedSearch": {
+    "query": "UserService",
+    "kinds": ["class"],
+    "refreshIfStale": true,
+    "contextBefore": 1,
+    "contextAfter": 1
+  }
+}
+```
+
+응답 일부:
+
+```json
+{
+  "ok": true,
+  "markdown": "# Code Context\n\n## Indexed Search Results\n\n### UserService\n\nsrc/users.ts:8\n\n```typescript\nexport class UserService {\n```"
+}
+```
+
 ### get_index_status
 
 입력:

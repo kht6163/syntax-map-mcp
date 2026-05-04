@@ -246,6 +246,25 @@ describe('createToolHandlers', () => {
         })
       );
 
+      const indexedContextResult = await handlers.buildContext({
+        detail: 'compact',
+        indexedSearch: {
+          query: 'UserService',
+          kinds: ['class'],
+          contextBefore: 1,
+          contextAfter: 1
+        }
+      });
+      expect(indexedContextResult.structuredContent).toEqual(
+        expect.objectContaining({
+          ok: true,
+          markdown: expect.stringContaining('## Indexed Search Results')
+        })
+      );
+      expect((indexedContextResult.structuredContent as { markdown: string }).markdown).toContain(
+        'sample.ts:8'
+      );
+
       const statusResult = await handlers.getIndexStatus({});
       expect(statusResult.structuredContent).toEqual(
         expect.objectContaining({
