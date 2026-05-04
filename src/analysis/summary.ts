@@ -1,3 +1,4 @@
+import type Parser from 'tree-sitter';
 import { parseSourceFile, type ParsedSourceFile, type ParseFailure } from '../parser.js';
 import type { CodeSymbol, SupportedLanguage } from '../types.js';
 import type { Workspace } from '../workspace.js';
@@ -68,6 +69,10 @@ function isImportNode(language: SupportedLanguage, nodeType: string): boolean {
 }
 
 function findExports(parsed: ParsedSourceFile): string[] {
+  if (parsed.language === 'python') {
+    return findPythonAllExports(parsed);
+  }
+
   return parsed.tree.rootNode.namedChildren
     .filter(node => isExportNode(parsed.language, node.type))
     .map(node => firstLine(node.text));
@@ -82,6 +87,26 @@ function isExportNode(language: SupportedLanguage, nodeType: string): boolean {
     case 'python':
       return false;
   }
+}
+
+function findPythonAllExports(parsed: ParsedSourceFile): string[] {
+  return parsed.tree.rootNode.namedChildren.flatMap(node => pythonAllExportNames(node));
+}
+
+function pythonAllExportNames(node: Parser.SyntaxNode): string[] {
+  if (node.type !== 'expression_statement') return [];
+
+  const assignment = node.namedChildren[0];
+  if (!assignment || assignment.type !== 'assignment') return [];
+
+  const [target, value] = assignment.namedChildren;
+  if (!target || !value || target.type !== 'identifier' || target.text !== '__all__') return [];
+  if (value.type !== 'list' && value.type !== 'tuple') return [];
+
+  return value.namedChildren
+    .filter(child => child.type === 'string')
+    .map(child => child.namedChildren.find(part => part.type === 'string_content')?.text ?? '')
+    .filter(Boolean);
 }
 
 function firstLine(text: string): string {

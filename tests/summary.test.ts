@@ -117,6 +117,38 @@ describe('summarizeFile', () => {
     }
   });
 
+  it('uses top-level Python __all__ as exports', async () => {
+    const workspaceRoot = await mkdtemp(path.join(os.tmpdir(), 'tree-sitter-summary-python-exports-'));
+
+    try {
+      await writeFile(
+        path.join(workspaceRoot, 'api.py'),
+        [
+          'class PublicService:',
+          '    pass',
+          '',
+          'def public_helper():',
+          '    return None',
+          '',
+          '__all__ = ["PublicService", "public_helper"]',
+          '',
+          'def configure():',
+          '    __all__ = ["LocalOnly"]'
+        ].join('\n')
+      );
+
+      const workspace = await createWorkspace(workspaceRoot);
+      const summary = await summarizeFile(workspace, 'api.py');
+
+      expect(summary.ok).toBe(true);
+      if (summary.ok) {
+        expect(summary.exports).toEqual(['PublicService', 'public_helper']);
+      }
+    } finally {
+      await rm(workspaceRoot, { recursive: true, force: true });
+    }
+  });
+
   it('propagates failures from invalid paths', async () => {
     const workspace = await createWorkspace(fixtureRoot);
     const summary = await summarizeFile(workspace, 'missing.ts');

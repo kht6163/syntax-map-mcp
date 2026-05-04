@@ -51,7 +51,7 @@ npx -y syntax-map-mcp --workspace-root /path/to/workspace
 
 `summarize_file`은 `sources` 필드로 `symbols`, `imports`, `exports`가 어떤 방식으로 추출되었는지 반환합니다.
 
-Python은 JavaScript/TypeScript처럼 명시적인 `export` 문법이 없으므로 `summarize_file`의 `exports`는 빈 배열을 반환합니다.
+Python은 JavaScript/TypeScript처럼 명시적인 `export` 문법이 없으므로, top-level `__all__`에 선언된 문자열 이름을 `exports`로 반환합니다. `__all__`이 없으면 `exports`는 빈 배열입니다.
 
 ## 도구 사용 예시
 
