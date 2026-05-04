@@ -30,12 +30,12 @@ node dist/cli.js --workspace-root /path/to/workspace
 
 ## 제공 도구
 
-- `listSymbols`: 파일 하나의 top-level 심볼 목록 반환
-- `findDefinition`: 여러 파일에서 이름과 선택적 kind로 정의 검색
-- `findReferences`: 여러 파일에서 식별자 참조 검색
-- `summarizeFile`: 파일 언어, 라인 수, imports, exports, symbols 요약
-- `runQuery`: 파일 하나에 tree-sitter query 실행
-- `buildContext`: 여러 파일 요약을 markdown 컨텍스트로 구성
+- `list_symbols`: 파일 하나의 top-level 심볼 목록 반환
+- `find_definition`: 여러 파일에서 이름과 선택적 kind로 정의 검색
+- `find_references`: 여러 파일에서 식별자 참조 검색
+- `summarize_file`: 파일 언어, 라인 수, imports, exports, symbols 요약
+- `run_query`: 파일 하나에 tree-sitter query 실행
+- `build_context`: 여러 파일 요약을 markdown 컨텍스트로 구성
 
 ## MCP 설정 예시
 

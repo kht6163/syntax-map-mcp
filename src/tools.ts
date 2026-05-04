@@ -97,7 +97,7 @@ export function registerTools(server: McpServer, workspace: Workspace): void {
   const handlers = createToolHandlers(workspace);
 
   server.registerTool(
-    'listSymbols',
+    'list_symbols',
     {
       title: 'List symbols',
       description: 'List top-level symbols in one supported source file.',
@@ -109,7 +109,7 @@ export function registerTools(server: McpServer, workspace: Workspace): void {
   );
 
   server.registerTool(
-    'findDefinition',
+    'find_definition',
     {
       title: 'Find definition',
       description: 'Find symbol definitions by name across supported source files.',
@@ -123,7 +123,7 @@ export function registerTools(server: McpServer, workspace: Workspace): void {
   );
 
   server.registerTool(
-    'findReferences',
+    'find_references',
     {
       title: 'Find references',
       description: 'Find identifier references by name across supported source files.',
@@ -136,7 +136,7 @@ export function registerTools(server: McpServer, workspace: Workspace): void {
   );
 
   server.registerTool(
-    'summarizeFile',
+    'summarize_file',
     {
       title: 'Summarize file',
       description: 'Summarize language, line count, imports, exports, and symbols for one file.',
@@ -148,7 +148,7 @@ export function registerTools(server: McpServer, workspace: Workspace): void {
   );
 
   server.registerTool(
-    'runQuery',
+    'run_query',
     {
       title: 'Run tree-sitter query',
       description: 'Run a tree-sitter query against one supported source file.',
@@ -161,7 +161,7 @@ export function registerTools(server: McpServer, workspace: Workspace): void {
   );
 
   server.registerTool(
-    'buildContext',
+    'build_context',
     {
       title: 'Build context',
       description: 'Build markdown context for supported source files.',

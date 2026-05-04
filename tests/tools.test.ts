@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { createToolHandlers } from '../src/tools.js';
+import { createToolHandlers, registerTools } from '../src/tools.js';
 import { createWorkspace } from '../src/workspace.js';
 
 const fixtureRoot = path.join(process.cwd(), 'tests', 'fixtures');
@@ -134,5 +134,27 @@ describe('createToolHandlers', () => {
         message: expect.any(String)
       }
     });
+  });
+});
+
+describe('registerTools', () => {
+  it('registers the public MCP tool names in snake_case', async () => {
+    const registeredNames: string[] = [];
+    const server = {
+      registerTool(name: string) {
+        registeredNames.push(name);
+      }
+    };
+
+    registerTools(server as never, await createWorkspace(fixtureRoot));
+
+    expect(registeredNames).toEqual([
+      'list_symbols',
+      'find_definition',
+      'find_references',
+      'summarize_file',
+      'run_query',
+      'build_context'
+    ]);
   });
 });
