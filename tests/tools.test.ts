@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { cp, mkdtemp, rm } from 'node:fs/promises';
+import { cp, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { describe, expect, it } from 'vitest';
 import { createToolHandlers, registerTools } from '../src/tools.js';
@@ -159,6 +159,9 @@ describe('createToolHandlers', () => {
       expect(searchResult.structuredContent).toEqual(
         expect.objectContaining({
           ok: true,
+          isStale: false,
+          staleFiles: 0,
+          refreshed: false,
           total: 1,
           symbols: [
             expect.objectContaining({
@@ -174,6 +177,9 @@ describe('createToolHandlers', () => {
       expect(definitionResult.structuredContent).toEqual(
         expect.objectContaining({
           ok: true,
+          isStale: false,
+          staleFiles: 0,
+          refreshed: false,
           total: 1,
           definitions: [
             expect.objectContaining({
@@ -202,6 +208,76 @@ describe('createToolHandlers', () => {
         expect.objectContaining({
           ok: true,
           cleared: true
+        })
+      );
+    } finally {
+      await rm(workspaceRoot, { recursive: true, force: true });
+    }
+  });
+
+  it('reports stale indexed searches and refreshes on demand', async () => {
+    const workspaceRoot = await mkdtemp(path.join(tmpdir(), 'syntax-map-mcp-'));
+    await cp(fixtureRoot, workspaceRoot, { recursive: true });
+
+    try {
+      const handlers = createToolHandlers(await createWorkspace(workspaceRoot));
+      await handlers.indexWorkspace({});
+
+      await writeFile(
+        path.join(workspaceRoot, 'sample.ts'),
+        'export class RenamedService {\n  getUserName() {\n    return "Ada";\n  }\n}\n'
+      );
+
+      const staleSearch = await handlers.searchSymbols({ query: 'RenamedService' });
+      expect(staleSearch.structuredContent).toEqual(
+        expect.objectContaining({
+          ok: true,
+          isStale: true,
+          staleFiles: 1,
+          refreshed: false,
+          total: 0
+        })
+      );
+
+      const refreshedSearch = await handlers.searchSymbols({
+        query: 'RenamedService',
+        refreshIfStale: true
+      });
+      expect(refreshedSearch.structuredContent).toEqual(
+        expect.objectContaining({
+          ok: true,
+          isStale: false,
+          staleFiles: 0,
+          refreshed: true,
+          total: 1,
+          symbols: [
+            expect.objectContaining({
+              path: 'sample.ts',
+              name: 'RenamedService',
+              kind: 'class'
+            })
+          ]
+        })
+      );
+
+      const refreshedDefinition = await handlers.findIndexedDefinition({
+        name: 'RenamedService',
+        refreshIfStale: true
+      });
+      expect(refreshedDefinition.structuredContent).toEqual(
+        expect.objectContaining({
+          ok: true,
+          isStale: false,
+          staleFiles: 0,
+          refreshed: false,
+          total: 1,
+          definitions: [
+            expect.objectContaining({
+              path: 'sample.ts',
+              name: 'RenamedService',
+              snippet: 'export class RenamedService {'
+            })
+          ]
         })
       );
     } finally {

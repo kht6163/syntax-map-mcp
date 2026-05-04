@@ -108,6 +108,7 @@ export function createToolHandlers(workspace: Workspace) {
       query: string;
       kinds?: CodeSymbol['kind'][];
       limit?: number;
+      refreshIfStale?: boolean;
     }): Promise<CallToolResult> {
       const result = await searchIndexedSymbols(workspace, input);
       if (!result.ok) return toolFailure(result.error.code, result.error.message);
@@ -118,6 +119,7 @@ export function createToolHandlers(workspace: Workspace) {
       name: string;
       kinds?: CodeSymbol['kind'][];
       limit?: number;
+      refreshIfStale?: boolean;
     }): Promise<CallToolResult> {
       const result = await findIndexedDefinitions(workspace, input);
       if (!result.ok) return toolFailure(result.error.code, result.error.message);
@@ -236,7 +238,8 @@ export function registerTools(server: McpServer, workspace: Workspace): void {
       inputSchema: {
         query: z.string(),
         kinds: z.array(symbolKindSchema).optional(),
-        limit: z.number().int().positive().max(500).optional()
+        limit: z.number().int().positive().max(500).optional(),
+        refreshIfStale: z.boolean().optional()
       }
     },
     handlers.searchSymbols
@@ -250,7 +253,8 @@ export function registerTools(server: McpServer, workspace: Workspace): void {
       inputSchema: {
         name: z.string(),
         kinds: z.array(symbolKindSchema).optional(),
-        limit: z.number().int().positive().max(500).optional()
+        limit: z.number().int().positive().max(500).optional(),
+        refreshIfStale: z.boolean().optional()
       }
     },
     handlers.findIndexedDefinition

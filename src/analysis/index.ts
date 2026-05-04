@@ -22,6 +22,9 @@ type SearchSymbolsResult =
   | {
       ok: true;
       indexPath: string;
+      isStale: boolean;
+      staleFiles: number;
+      refreshed: boolean;
       total: number;
       symbols: Array<
         CodeSymbol & {
@@ -36,6 +39,9 @@ type IndexedDefinitionResult =
   | {
       ok: true;
       indexPath: string;
+      isStale: boolean;
+      staleFiles: number;
+      refreshed: boolean;
       total: number;
       definitions: Array<
         CodeSymbol & {
@@ -70,6 +76,14 @@ type StoredFile = {
   size: number;
   mtimeMs: number;
   parseStatus: string;
+};
+
+type IndexReadState = {
+  database: Database;
+  indexPath: string;
+  isStale: boolean;
+  staleFiles: number;
+  refreshed: boolean;
 };
 
 const INDEX_DIRECTORY = '.syntax-map-mcp';
@@ -168,6 +182,66 @@ function isCurrent(stored: StoredFile | undefined, current: WorkspaceFileInfo): 
     stored.size === current.size &&
     stored.mtimeMs === current.mtimeMs
   );
+}
+
+async function countStaleFiles(workspace: Workspace, database: Database): Promise<number> {
+  const storedFiles = selectStoredFiles(database);
+  const currentFiles = await workspace.listSourceFiles();
+  const currentPaths = new Set(currentFiles.map(file => file.relativePath));
+  let staleFiles = 0;
+
+  for (const file of currentFiles) {
+    if (!isCurrent(storedFiles.get(file.relativePath), file)) {
+      staleFiles += 1;
+    }
+  }
+
+  for (const storedPath of storedFiles.keys()) {
+    if (!currentPaths.has(storedPath)) {
+      staleFiles += 1;
+    }
+  }
+
+  return staleFiles;
+}
+
+async function openIndexForRead(
+  workspace: Workspace,
+  input: { refreshIfStale?: boolean }
+): Promise<IndexReadState> {
+  const indexPath = indexPathForWorkspace(workspace);
+  let database = await openDatabase(indexPath);
+  initSchema(database);
+
+  const initialStaleFiles = await countStaleFiles(workspace, database);
+  if (!input.refreshIfStale || initialStaleFiles === 0) {
+    return {
+      database,
+      indexPath,
+      isStale: initialStaleFiles > 0,
+      staleFiles: initialStaleFiles,
+      refreshed: false
+    };
+  }
+
+  database.close();
+
+  const refreshedIndex = await indexWorkspace(workspace);
+  if (!refreshedIndex.ok) {
+    throw new Error(refreshedIndex.error.message);
+  }
+
+  database = await openDatabase(indexPath);
+  initSchema(database);
+
+  const staleFiles = await countStaleFiles(workspace, database);
+  return {
+    database,
+    indexPath,
+    isStale: staleFiles > 0,
+    staleFiles,
+    refreshed: true
+  };
 }
 
 function upsertFile(
@@ -369,13 +443,14 @@ export async function findIndexedDefinitions(
     name: string;
     kinds?: CodeSymbol['kind'][];
     limit?: number;
+    refreshIfStale?: boolean;
   }
 ): Promise<IndexedDefinitionResult> {
-  const indexPath = indexPathForWorkspace(workspace);
-  const database = await openDatabase(indexPath);
+  let readState: IndexReadState | undefined;
 
   try {
-    initSchema(database);
+    readState = await openIndexForRead(workspace, input);
+    const { database } = readState;
 
     const where = ['name = ?'];
     const params: SqlValue[] = [input.name];
@@ -468,14 +543,17 @@ export async function findIndexedDefinitions(
 
     return {
       ok: true,
-      indexPath,
+      indexPath: readState.indexPath,
+      isStale: readState.isStale,
+      staleFiles: readState.staleFiles,
+      refreshed: readState.refreshed,
       total: definitions.length,
       definitions
     };
   } catch (error) {
     return failure(error instanceof Error ? error.message : String(error));
   } finally {
-    database.close();
+    readState?.database.close();
   }
 }
 
@@ -485,13 +563,14 @@ export async function searchSymbols(
     query: string;
     kinds?: CodeSymbol['kind'][];
     limit?: number;
+    refreshIfStale?: boolean;
   }
 ): Promise<SearchSymbolsResult> {
-  const indexPath = indexPathForWorkspace(workspace);
-  const database = await openDatabase(indexPath);
+  let readState: IndexReadState | undefined;
 
   try {
-    initSchema(database);
+    readState = await openIndexForRead(workspace, input);
+    const { database } = readState;
 
     const where = ['name LIKE ? ESCAPE "\\"'];
     const params: SqlValue[] = [sqlLikePattern(input.query)];
@@ -578,14 +657,17 @@ export async function searchSymbols(
 
     return {
       ok: true,
-      indexPath,
+      indexPath: readState.indexPath,
+      isStale: readState.isStale,
+      staleFiles: readState.staleFiles,
+      refreshed: readState.refreshed,
       total: symbols.length,
       symbols
     };
   } catch (error) {
     return failure(error instanceof Error ? error.message : String(error));
   } finally {
-    database.close();
+    readState?.database.close();
   }
 }
 
@@ -596,21 +678,7 @@ export async function getIndexStatus(workspace: Workspace): Promise<IndexStatusR
   try {
     initSchema(database);
 
-    const storedFiles = selectStoredFiles(database);
-    const currentFiles = await workspace.listSourceFiles();
-    let staleFiles = 0;
-
-    for (const file of currentFiles) {
-      if (!isCurrent(storedFiles.get(file.relativePath), file)) {
-        staleFiles += 1;
-      }
-    }
-
-    for (const storedPath of storedFiles.keys()) {
-      if (!currentFiles.some(file => file.relativePath === storedPath)) {
-        staleFiles += 1;
-      }
-    }
+    const staleFiles = await countStaleFiles(workspace, database);
 
     return {
       ok: true,
