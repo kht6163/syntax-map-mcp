@@ -50,7 +50,7 @@ export async function findReferences(
   return { ok: true, references };
 }
 
-function referenceQueryForLanguage(language: string): string {
+export function referenceQueryForLanguage(language: string): string {
   switch (language) {
     case 'typescript':
     case 'tsx':

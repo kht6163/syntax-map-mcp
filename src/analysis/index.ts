@@ -4,8 +4,10 @@ import initSqlJs from 'sql.js';
 import type { Database, SqlValue } from 'sql.js';
 import { listSymbols } from './symbols.js';
 import { parseSourceFile } from '../parser.js';
-import type { CodeSymbol, SupportedLanguage, ToolFailure } from '../types.js';
+import type { CodeSymbol, SourceRange, SupportedLanguage, ToolFailure } from '../types.js';
 import type { Workspace, WorkspaceFileInfo } from '../workspace.js';
+import { runTreeSitterQuery } from './query.js';
+import { referenceQueryForLanguage } from './references.js';
 
 type IndexResult =
   | {
@@ -50,6 +52,25 @@ type IndexedDefinitionResult =
           snippet: string;
         }
       >;
+    }
+  | ToolFailure;
+
+type IndexedReferencesResult =
+  | {
+      ok: true;
+      indexPath: string;
+      isStale: boolean;
+      staleFiles: number;
+      refreshed: boolean;
+      total: number;
+      references: Array<{
+        path: string;
+        language: SupportedLanguage;
+        name: string;
+        nodeType: string;
+        range: SourceRange;
+        snippet: string;
+      }>;
     }
   | ToolFailure;
 
@@ -151,8 +172,22 @@ function initSchema(database: Database): void {
       FOREIGN KEY(file_path) REFERENCES files(path) ON DELETE CASCADE
     );
 
+    CREATE TABLE IF NOT EXISTS reference_captures (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      file_path TEXT NOT NULL,
+      language TEXT NOT NULL,
+      name TEXT NOT NULL,
+      node_type TEXT NOT NULL,
+      start_row INTEGER NOT NULL,
+      start_column INTEGER NOT NULL,
+      end_row INTEGER NOT NULL,
+      end_column INTEGER NOT NULL,
+      FOREIGN KEY(file_path) REFERENCES files(path) ON DELETE CASCADE
+    );
+
     CREATE INDEX IF NOT EXISTS symbols_name_idx ON symbols(name);
     CREATE INDEX IF NOT EXISTS symbols_kind_idx ON symbols(kind);
+    CREATE INDEX IF NOT EXISTS reference_captures_name_idx ON reference_captures(name);
   `);
 }
 
@@ -322,12 +357,53 @@ function insertSymbol(
   );
 }
 
+function insertReference(
+  database: Database,
+  input: {
+    filePath: string;
+    language: SupportedLanguage;
+    name: string;
+    nodeType: string;
+    range: SourceRange;
+  }
+): void {
+  database.run(
+    `
+      INSERT INTO reference_captures (
+        file_path,
+        language,
+        name,
+        node_type,
+        start_row,
+        start_column,
+        end_row,
+        end_column
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `,
+    [
+      input.filePath,
+      input.language,
+      input.name,
+      input.nodeType,
+      input.range.start.row,
+      input.range.start.column,
+      input.range.end.row,
+      input.range.end.column
+    ]
+  );
+}
+
 function deleteFile(database: Database, filePath: string): void {
   database.run('DELETE FROM files WHERE path = ?', [filePath]);
 }
 
 function deleteSymbolsForFile(database: Database, filePath: string): void {
   database.run('DELETE FROM symbols WHERE file_path = ?', [filePath]);
+}
+
+function deleteReferencesForFile(database: Database, filePath: string): void {
+  database.run('DELETE FROM reference_captures WHERE file_path = ?', [filePath]);
 }
 
 function scalarCount(database: Database, sql: string): number {
@@ -384,6 +460,7 @@ export async function indexWorkspace(workspace: Workspace): Promise<IndexResult>
           errorMessage: file.error.message
         });
         deleteSymbolsForFile(database, fileInfo.relativePath);
+        deleteReferencesForFile(database, fileInfo.relativePath);
         indexedFiles += 1;
         continue;
       }
@@ -397,6 +474,7 @@ export async function indexWorkspace(workspace: Workspace): Promise<IndexResult>
           errorMessage: parsed.error.message
         });
         deleteSymbolsForFile(database, fileInfo.relativePath);
+        deleteReferencesForFile(database, fileInfo.relativePath);
         indexedFiles += 1;
         continue;
       }
@@ -408,12 +486,28 @@ export async function indexWorkspace(workspace: Workspace): Promise<IndexResult>
         errorMessage: null
       });
       deleteSymbolsForFile(database, fileInfo.relativePath);
+      deleteReferencesForFile(database, fileInfo.relativePath);
 
       for (const symbol of listSymbols(parsed)) {
         insertSymbol(database, {
           filePath: fileInfo.relativePath,
           language: parsed.language,
           symbol
+        });
+      }
+
+      const references = runTreeSitterQuery(parsed, referenceQueryForLanguage(parsed.language));
+      if (!references.ok) {
+        throw new Error(references.error.message);
+      }
+
+      for (const reference of references.captures) {
+        insertReference(database, {
+          filePath: fileInfo.relativePath,
+          language: parsed.language,
+          name: reference.text,
+          nodeType: reference.nodeType,
+          range: reference.range
         });
       }
 
@@ -549,6 +643,92 @@ export async function findIndexedDefinitions(
       refreshed: readState.refreshed,
       total: definitions.length,
       definitions
+    };
+  } catch (error) {
+    return failure(error instanceof Error ? error.message : String(error));
+  } finally {
+    readState?.database.close();
+  }
+}
+
+export async function findIndexedReferences(
+  workspace: Workspace,
+  input: {
+    name: string;
+    limit?: number;
+    refreshIfStale?: boolean;
+  }
+): Promise<IndexedReferencesResult> {
+  let readState: IndexReadState | undefined;
+
+  try {
+    readState = await openIndexForRead(workspace, input);
+    const { database } = readState;
+    const limit = input.limit ?? 50;
+    const statement = database.prepare(
+      `
+        SELECT
+          file_path,
+          language,
+          name,
+          node_type,
+          start_row,
+          start_column,
+          end_row,
+          end_column
+        FROM reference_captures
+        WHERE name = ?
+        ORDER BY file_path ASC, start_row ASC
+        LIMIT ?
+      `,
+      [input.name, limit]
+    );
+    const references: Array<{
+      path: string;
+      language: SupportedLanguage;
+      name: string;
+      nodeType: string;
+      range: SourceRange;
+      snippet: string;
+    }> = [];
+
+    try {
+      while (statement.step()) {
+        const row = statement.getAsObject();
+        const filePath = String(rowValue(row, 'file_path'));
+        const startRow = Number(rowValue(row, 'start_row'));
+        const file = await workspace.readSourceFile(filePath);
+
+        references.push({
+          path: filePath,
+          language: rowValue(row, 'language') as SupportedLanguage,
+          name: String(rowValue(row, 'name')),
+          nodeType: String(rowValue(row, 'node_type')),
+          range: {
+            start: {
+              row: startRow,
+              column: Number(rowValue(row, 'start_column'))
+            },
+            end: {
+              row: Number(rowValue(row, 'end_row')),
+              column: Number(rowValue(row, 'end_column'))
+            }
+          },
+          snippet: file.ok ? lineAt(file.text, startRow) : ''
+        });
+      }
+    } finally {
+      statement.free();
+    }
+
+    return {
+      ok: true,
+      indexPath: readState.indexPath,
+      isStale: readState.isStale,
+      staleFiles: readState.staleFiles,
+      refreshed: readState.refreshed,
+      total: references.length,
+      references
     };
   } catch (error) {
     return failure(error instanceof Error ? error.message : String(error));

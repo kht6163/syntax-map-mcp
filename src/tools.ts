@@ -6,6 +6,7 @@ import { findDefinitions } from './analysis/definitions.js';
 import {
   clearIndex as clearWorkspaceIndex,
   findIndexedDefinitions,
+  findIndexedReferences,
   getIndexStatus as getWorkspaceIndexStatus,
   indexWorkspace as indexWorkspaceAnalysis,
   searchSymbols as searchIndexedSymbols
@@ -122,6 +123,16 @@ export function createToolHandlers(workspace: Workspace) {
       refreshIfStale?: boolean;
     }): Promise<CallToolResult> {
       const result = await findIndexedDefinitions(workspace, input);
+      if (!result.ok) return toolFailure(result.error.code, result.error.message);
+      return jsonResult(result);
+    },
+
+    async findIndexedReferences(input: {
+      name: string;
+      limit?: number;
+      refreshIfStale?: boolean;
+    }): Promise<CallToolResult> {
+      const result = await findIndexedReferences(workspace, input);
       if (!result.ok) return toolFailure(result.error.code, result.error.message);
       return jsonResult(result);
     },
@@ -258,6 +269,20 @@ export function registerTools(server: McpServer, workspace: Workspace): void {
       }
     },
     handlers.findIndexedDefinition
+  );
+
+  server.registerTool(
+    'find_indexed_references',
+    {
+      title: 'Find indexed references',
+      description: 'Find identifier references from the SQLite workspace index with snippets.',
+      inputSchema: {
+        name: z.string(),
+        limit: z.number().int().positive().max(500).optional(),
+        refreshIfStale: z.boolean().optional()
+      }
+    },
+    handlers.findIndexedReferences
   );
 
   server.registerTool(

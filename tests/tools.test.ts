@@ -193,6 +193,25 @@ describe('createToolHandlers', () => {
         })
       );
 
+      const referencesResult = await handlers.findIndexedReferences({ name: 'formatUser' });
+      expect(referencesResult.structuredContent).toEqual(
+        expect.objectContaining({
+          ok: true,
+          isStale: false,
+          staleFiles: 0,
+          refreshed: false,
+          total: expect.any(Number),
+          references: expect.arrayContaining([
+            expect.objectContaining({
+              path: 'sample.ts',
+              name: 'formatUser',
+              nodeType: expect.any(String),
+              snippet: expect.stringContaining('formatUser')
+            })
+          ])
+        })
+      );
+
       const statusResult = await handlers.getIndexStatus({});
       expect(statusResult.structuredContent).toEqual(
         expect.objectContaining({
@@ -280,6 +299,42 @@ describe('createToolHandlers', () => {
           ]
         })
       );
+
+      await writeFile(
+        path.join(workspaceRoot, 'sample.ts'),
+        'export function renamedTarget() {\n  return "Ada";\n}\n\nrenamedTarget();\n'
+      );
+
+      const staleReferences = await handlers.findIndexedReferences({ name: 'renamedTarget' });
+      expect(staleReferences.structuredContent).toEqual(
+        expect.objectContaining({
+          ok: true,
+          isStale: true,
+          staleFiles: 1,
+          refreshed: false,
+          total: 0
+        })
+      );
+
+      const refreshedReferences = await handlers.findIndexedReferences({
+        name: 'renamedTarget',
+        refreshIfStale: true
+      });
+      expect(refreshedReferences.structuredContent).toEqual(
+        expect.objectContaining({
+          ok: true,
+          isStale: false,
+          staleFiles: 0,
+          refreshed: true,
+          references: expect.arrayContaining([
+            expect.objectContaining({
+              path: 'sample.ts',
+              name: 'renamedTarget',
+              snippet: expect.stringContaining('renamedTarget')
+            })
+          ])
+        })
+      );
     } finally {
       await rm(workspaceRoot, { recursive: true, force: true });
     }
@@ -307,6 +362,7 @@ describe('registerTools', () => {
       'index_workspace',
       'search_symbols',
       'find_indexed_definition',
+      'find_indexed_references',
       'get_index_status',
       'clear_index'
     ]);
