@@ -17,20 +17,36 @@ async function parseFixture(fileName: string) {
   return parsed;
 }
 
+function parseInline(relativePath: string, text: string) {
+  const parsed = parseSourceFile({
+    ok: true,
+    absolutePath: path.join(fixtureRoot, relativePath),
+    relativePath,
+    text
+  });
+  expect(parsed.ok).toBe(true);
+  if (!parsed.ok) throw new Error(parsed.error.message);
+  return parsed;
+}
+
+function symbolLabels(symbols: ReturnType<typeof listSymbols>) {
+  return symbols
+    .map(symbol => `${symbol.kind}:${symbol.name}`)
+    .sort((left, right) => left.localeCompare(right));
+}
+
 describe('listSymbols', () => {
   it('extracts TypeScript symbols', async () => {
     const symbols = listSymbols(await parseFixture('sample.ts'));
 
-    expect(symbols.map(symbol => `${symbol.kind}:${symbol.name}`)).toEqual(
-      expect.arrayContaining([
-        'interface:User',
-        'type:UserId',
-        'class:UserService',
-        'method:findUser',
-        'function:formatUser',
-        'variable:defaultUser'
-      ])
-    );
+    expect(symbolLabels(symbols)).toEqual([
+      'class:UserService',
+      'function:formatUser',
+      'interface:User',
+      'method:findUser',
+      'type:UserId',
+      'variable:defaultUser'
+    ]);
 
     expect(symbols.find(symbol => symbol.name === 'UserService')).toEqual(
       expect.objectContaining({
@@ -46,18 +62,58 @@ describe('listSymbols', () => {
   it('extracts Python symbols', async () => {
     const symbols = listSymbols(await parseFixture('sample.py'));
 
-    expect(symbols.map(symbol => `${symbol.kind}:${symbol.name}`)).toEqual(
-      expect.arrayContaining([
-        'class:User',
-        'class:UserRepository',
-        'method:find_user',
-        'function:format_user',
-        'variable:default_user'
-      ])
-    );
+    expect(symbolLabels(symbols)).toEqual([
+      'class:User',
+      'class:UserRepository',
+      'function:format_user',
+      'method:__init__',
+      'method:find_user',
+      'variable:default_user'
+    ]);
 
     expect(symbols.find(symbol => symbol.name === 'find_user')).toEqual(
       expect.objectContaining({ kind: 'method', parentName: 'UserRepository' })
     );
+  });
+
+  it('classifies nested Python functions as functions', () => {
+    const symbols = listSymbols(
+      parseInline(
+        'nested.py',
+        `class Container:
+    def method(self):
+        def helper():
+            return 1
+        return helper()
+`
+      )
+    );
+
+    expect(symbolLabels(symbols)).toEqual([
+      'class:Container',
+      'function:helper',
+      'method:method'
+    ]);
+    expect(symbols.find(symbol => symbol.name === 'method')).toEqual(
+      expect.objectContaining({ kind: 'method', parentName: 'Container' })
+    );
+    expect(symbols.find(symbol => symbol.name === 'helper')).toEqual(
+      expect.objectContaining({ kind: 'function', parentName: undefined })
+    );
+  });
+
+  it('excludes local TypeScript variables', () => {
+    const symbols = listSymbols(
+      parseInline(
+        'local.ts',
+        `export function outer() {
+  const localValue = 1;
+  return localValue;
+}
+`
+      )
+    );
+
+    expect(symbolLabels(symbols)).toEqual(['function:outer']);
   });
 });

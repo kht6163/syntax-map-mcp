@@ -54,6 +54,8 @@ function querySymbols(parsed: ParsedSourceFile, pattern: SymbolPattern): CodeSym
     const name = match.captures.find(capture => capture.name === 'name')?.node;
     const definition = match.captures.find(capture => capture.name === 'definition')?.node ?? name;
     if (!name || !definition) return [];
+    if (pattern.kind === 'variable' && !isTopLevelVariableDefinition(definition)) return [];
+    if (pattern.kind === 'method' && name.text === 'constructor') return [];
 
     const kind = symbolKind(parsed, pattern.kind, definition);
 
@@ -74,7 +76,7 @@ function symbolKind(
   kind: SymbolKind,
   definition: Parser.SyntaxNode
 ): SymbolKind {
-  if (parsed.language === 'python' && kind === 'function' && findAncestor(definition, 'class_definition')) {
+  if (parsed.language === 'python' && kind === 'function' && isDirectPythonMethod(definition)) {
     return 'method';
   }
 
@@ -90,10 +92,35 @@ function parentNameForSymbol(
 
   const classNode =
     parsed.language === 'python'
-      ? findAncestor(definition, 'class_definition')
+      ? directPythonMethodClass(definition)
       : findAncestor(definition, 'class_declaration');
 
   return classNode?.childForFieldName('name')?.text;
+}
+
+function isTopLevelVariableDefinition(definition: Parser.SyntaxNode): boolean {
+  const statement = definition.parent;
+  if (!statement) return false;
+
+  if (statement.parent?.type === 'program' || statement.parent?.type === 'module') return true;
+
+  return (
+    statement.parent?.type === 'export_statement' &&
+    (statement.parent.parent?.type === 'program' || statement.parent.parent?.type === 'module')
+  );
+}
+
+function isDirectPythonMethod(definition: Parser.SyntaxNode): boolean {
+  return directPythonMethodClass(definition) !== undefined;
+}
+
+function directPythonMethodClass(definition: Parser.SyntaxNode): Parser.SyntaxNode | undefined {
+  const block = definition.parent;
+  const classNode = block?.parent;
+
+  if (block?.type !== 'block' || classNode?.type !== 'class_definition') return undefined;
+
+  return classNode;
 }
 
 function findAncestor(node: Parser.SyntaxNode, type: string): Parser.SyntaxNode | undefined {
