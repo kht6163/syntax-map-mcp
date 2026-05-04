@@ -9,14 +9,30 @@ describe('parser', () => {
   it.each([
     ['sample.js', 'javascript'],
     ['sample.ts', 'typescript'],
+    ['sample.tsx', 'tsx'],
     ['sample.py', 'python']
   ] as const)('detects %s as %s', (fileName, expectedLanguage) => {
     expect(detectLanguage(fileName)).toEqual({ ok: true, language: expectedLanguage });
   });
 
-  it('parses TypeScript fixture', async () => {
+  it('rejects unsupported extensions', () => {
+    expect(detectLanguage('README.md')).toEqual({
+      ok: false,
+      error: {
+        code: 'UNSUPPORTED_EXTENSION',
+        message: 'Unsupported extension: .md'
+      }
+    });
+  });
+
+  it.each([
+    ['sample.js', 'javascript', 'program'],
+    ['sample.ts', 'typescript', 'program'],
+    ['sample.tsx', 'tsx', 'program'],
+    ['sample.py', 'python', 'module']
+  ] as const)('parses %s as %s with %s root', async (fileName, expectedLanguage, expectedRoot) => {
     const workspace = await createWorkspace(fixtureRoot);
-    const file = await workspace.readSourceFile('sample.ts');
+    const file = await workspace.readSourceFile(fileName);
     expect(file.ok).toBe(true);
     if (!file.ok) return;
 
@@ -24,8 +40,8 @@ describe('parser', () => {
 
     expect(parsed.ok).toBe(true);
     if (parsed.ok) {
-      expect(parsed.language).toBe('typescript');
-      expect(parsed.tree.rootNode.type).toBe('program');
+      expect(parsed.language).toBe(expectedLanguage);
+      expect(parsed.tree.rootNode.type).toBe(expectedRoot);
     }
   });
 });
