@@ -33,6 +33,7 @@ type SearchSymbolsResult =
         CodeSymbol & {
           path: string;
           language: SupportedLanguage;
+          snippet: string;
         }
       >;
     }
@@ -789,7 +790,9 @@ export async function searchSymbols(
       `,
       params
     );
-    const symbols: Array<CodeSymbol & { path: string; language: SupportedLanguage }> = [];
+    const symbols: Array<
+      CodeSymbol & { path: string; language: SupportedLanguage; snippet: string }
+    > = [];
 
     try {
       while (statement.step()) {
@@ -798,9 +801,12 @@ export async function searchSymbols(
         const selectionStartColumn = rowValue(row, 'selection_start_column');
         const selectionEndRow = rowValue(row, 'selection_end_row');
         const selectionEndColumn = rowValue(row, 'selection_end_column');
+        const filePath = String(rowValue(row, 'file_path'));
+        const startRow = Number(rowValue(row, 'start_row'));
+        const file = await workspace.readSourceFile(filePath);
 
         symbols.push({
-          path: String(rowValue(row, 'file_path')),
+          path: filePath,
           language: rowValue(row, 'language') as SupportedLanguage,
           name: String(rowValue(row, 'name')),
           kind: rowValue(row, 'kind') as CodeSymbol['kind'],
@@ -808,7 +814,7 @@ export async function searchSymbols(
             rowValue(row, 'parent_name') === null ? undefined : String(rowValue(row, 'parent_name')),
           range: {
             start: {
-              row: Number(rowValue(row, 'start_row')),
+              row: startRow,
               column: Number(rowValue(row, 'start_column'))
             },
             end: {
@@ -831,7 +837,8 @@ export async function searchSymbols(
                     row: Number(selectionEndRow),
                     column: Number(selectionEndColumn)
                   }
-                }
+                },
+          snippet: file.ok ? lineAt(file.text, startRow) : ''
         });
       }
     } finally {

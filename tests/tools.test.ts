@@ -169,7 +169,8 @@ describe('createToolHandlers', () => {
             expect.objectContaining({
               path: 'sample.ts',
               name: 'UserService',
-              kind: 'class'
+              kind: 'class',
+              snippet: 'export class UserService {'
             })
           ]
         })

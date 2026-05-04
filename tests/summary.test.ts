@@ -54,6 +54,37 @@ describe('summarizeFile', () => {
     }
   });
 
+  it('excludes function-local lazy imports from file imports', async () => {
+    const workspaceRoot = await mkdtemp(path.join(os.tmpdir(), 'tree-sitter-summary-imports-'));
+
+    try {
+      await writeFile(
+        path.join(workspaceRoot, 'parsers.py'),
+        [
+          'import os',
+          '',
+          'def load_one():',
+          '    from src.crawler import native_parsers as _native_pkg',
+          '    return _native_pkg',
+          '',
+          'def load_two():',
+          '    from src.crawler import native_parsers as _native_pkg',
+          '    return _native_pkg'
+        ].join('\n')
+      );
+
+      const workspace = await createWorkspace(workspaceRoot);
+      const summary = await summarizeFile(workspace, 'parsers.py');
+
+      expect(summary.ok).toBe(true);
+      if (summary.ok) {
+        expect(summary.imports).toEqual(['import os']);
+      }
+    } finally {
+      await rm(workspaceRoot, { recursive: true, force: true });
+    }
+  });
+
   it('propagates failures from invalid paths', async () => {
     const workspace = await createWorkspace(fixtureRoot);
     const summary = await summarizeFile(workspace, 'missing.ts');

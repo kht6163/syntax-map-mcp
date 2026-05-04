@@ -1,4 +1,4 @@
-import { parseSourceFile, type ParseFailure } from '../parser.js';
+import { parseSourceFile, type ParsedSourceFile, type ParseFailure } from '../parser.js';
 import type { CodeSymbol, SupportedLanguage } from '../types.js';
 import type { Workspace } from '../workspace.js';
 import { listSymbols } from './symbols.js';
@@ -29,7 +29,7 @@ export async function summarizeFile(
     language: parsed.language,
     lineCount: countLines(file.text),
     symbols: listSymbols(parsed),
-    imports: findImports(file.text),
+    imports: findImports(parsed),
     exports: findExports(file.text)
   };
 }
@@ -40,8 +40,21 @@ function countLines(text: string): number {
   return text.replace(/\r\n|\r|\n$/, '').split(/\r\n|\r|\n/).length;
 }
 
-function findImports(text: string): string[] {
-  return trimmedLines(text).filter(line => line.startsWith('import ') || line.startsWith('from '));
+function findImports(parsed: ParsedSourceFile): string[] {
+  return parsed.tree.rootNode.namedChildren
+    .filter(node => isImportNode(parsed.language, node.type))
+    .map(node => node.text.trim());
+}
+
+function isImportNode(language: SupportedLanguage, nodeType: string): boolean {
+  switch (language) {
+    case 'python':
+      return nodeType === 'import_statement' || nodeType === 'import_from_statement';
+    case 'javascript':
+    case 'typescript':
+    case 'tsx':
+      return nodeType === 'import_statement';
+  }
 }
 
 function findExports(text: string): string[] {
