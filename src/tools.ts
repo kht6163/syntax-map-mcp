@@ -5,6 +5,7 @@ import { buildContext as buildContextAnalysis } from './analysis/context.js';
 import { findDefinitions } from './analysis/definitions.js';
 import {
   clearIndex as clearWorkspaceIndex,
+  findIndexedDefinitions,
   getIndexStatus as getWorkspaceIndexStatus,
   indexWorkspace as indexWorkspaceAnalysis,
   searchSymbols as searchIndexedSymbols
@@ -109,6 +110,16 @@ export function createToolHandlers(workspace: Workspace) {
       limit?: number;
     }): Promise<CallToolResult> {
       const result = await searchIndexedSymbols(workspace, input);
+      if (!result.ok) return toolFailure(result.error.code, result.error.message);
+      return jsonResult(result);
+    },
+
+    async findIndexedDefinition(input: {
+      name: string;
+      kinds?: CodeSymbol['kind'][];
+      limit?: number;
+    }): Promise<CallToolResult> {
+      const result = await findIndexedDefinitions(workspace, input);
       if (!result.ok) return toolFailure(result.error.code, result.error.message);
       return jsonResult(result);
     },
@@ -229,6 +240,20 @@ export function registerTools(server: McpServer, workspace: Workspace): void {
       }
     },
     handlers.searchSymbols
+  );
+
+  server.registerTool(
+    'find_indexed_definition',
+    {
+      title: 'Find indexed definition',
+      description: 'Find exact symbol definitions from the SQLite workspace index with snippets.',
+      inputSchema: {
+        name: z.string(),
+        kinds: z.array(symbolKindSchema).optional(),
+        limit: z.number().int().positive().max(500).optional()
+      }
+    },
+    handlers.findIndexedDefinition
   );
 
   server.registerTool(

@@ -170,6 +170,23 @@ describe('createToolHandlers', () => {
         })
       );
 
+      const definitionResult = await handlers.findIndexedDefinition({ name: 'UserService' });
+      expect(definitionResult.structuredContent).toEqual(
+        expect.objectContaining({
+          ok: true,
+          total: 1,
+          definitions: [
+            expect.objectContaining({
+              path: 'sample.ts',
+              language: 'typescript',
+              name: 'UserService',
+              kind: 'class',
+              snippet: 'export class UserService {'
+            })
+          ]
+        })
+      );
+
       const statusResult = await handlers.getIndexStatus({});
       expect(statusResult.structuredContent).toEqual(
         expect.objectContaining({
@@ -213,6 +230,7 @@ describe('registerTools', () => {
       'build_context',
       'index_workspace',
       'search_symbols',
+      'find_indexed_definition',
       'get_index_status',
       'clear_index'
     ]);

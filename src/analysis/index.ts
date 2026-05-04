@@ -32,6 +32,21 @@ type SearchSymbolsResult =
     }
   | ToolFailure;
 
+type IndexedDefinitionResult =
+  | {
+      ok: true;
+      indexPath: string;
+      total: number;
+      definitions: Array<
+        CodeSymbol & {
+          path: string;
+          language: SupportedLanguage;
+          snippet: string;
+        }
+      >;
+    }
+  | ToolFailure;
+
 type IndexStatusResult =
   | {
       ok: true;
@@ -255,6 +270,10 @@ function rowValue(row: Record<string, SqlValue>, key: string): SqlValue {
   return row[key];
 }
 
+function lineAt(text: string, row: number): string {
+  return text.split(/\r?\n/)[row] ?? '';
+}
+
 export async function indexWorkspace(workspace: Workspace): Promise<IndexResult> {
   const indexPath = indexPathForWorkspace(workspace);
   const database = await openDatabase(indexPath);
@@ -336,6 +355,122 @@ export async function indexWorkspace(workspace: Workspace): Promise<IndexResult>
       skippedFiles,
       removedFiles,
       symbols: scalarCount(database, 'SELECT COUNT(*) FROM symbols')
+    };
+  } catch (error) {
+    return failure(error instanceof Error ? error.message : String(error));
+  } finally {
+    database.close();
+  }
+}
+
+export async function findIndexedDefinitions(
+  workspace: Workspace,
+  input: {
+    name: string;
+    kinds?: CodeSymbol['kind'][];
+    limit?: number;
+  }
+): Promise<IndexedDefinitionResult> {
+  const indexPath = indexPathForWorkspace(workspace);
+  const database = await openDatabase(indexPath);
+
+  try {
+    initSchema(database);
+
+    const where = ['name = ?'];
+    const params: SqlValue[] = [input.name];
+
+    if (input.kinds && input.kinds.length > 0) {
+      where.push(`kind IN (${input.kinds.map(() => '?').join(', ')})`);
+      params.push(...input.kinds);
+    }
+
+    const limit = input.limit ?? 50;
+    params.push(limit);
+
+    const statement = database.prepare(
+      `
+        SELECT
+          file_path,
+          language,
+          name,
+          kind,
+          parent_name,
+          start_row,
+          start_column,
+          end_row,
+          end_column,
+          selection_start_row,
+          selection_start_column,
+          selection_end_row,
+          selection_end_column
+        FROM symbols
+        WHERE ${where.join(' AND ')}
+        ORDER BY file_path ASC, start_row ASC, name ASC
+        LIMIT ?
+      `,
+      params
+    );
+    const definitions: Array<
+      CodeSymbol & { path: string; language: SupportedLanguage; snippet: string }
+    > = [];
+
+    try {
+      while (statement.step()) {
+        const row = statement.getAsObject();
+        const selectionStartRow = rowValue(row, 'selection_start_row');
+        const selectionStartColumn = rowValue(row, 'selection_start_column');
+        const selectionEndRow = rowValue(row, 'selection_end_row');
+        const selectionEndColumn = rowValue(row, 'selection_end_column');
+        const filePath = String(rowValue(row, 'file_path'));
+        const startRow = Number(rowValue(row, 'start_row'));
+        const file = await workspace.readSourceFile(filePath);
+
+        definitions.push({
+          path: filePath,
+          language: rowValue(row, 'language') as SupportedLanguage,
+          name: String(rowValue(row, 'name')),
+          kind: rowValue(row, 'kind') as CodeSymbol['kind'],
+          parentName:
+            rowValue(row, 'parent_name') === null ? undefined : String(rowValue(row, 'parent_name')),
+          range: {
+            start: {
+              row: startRow,
+              column: Number(rowValue(row, 'start_column'))
+            },
+            end: {
+              row: Number(rowValue(row, 'end_row')),
+              column: Number(rowValue(row, 'end_column'))
+            }
+          },
+          selectionRange:
+            selectionStartRow === null ||
+            selectionStartColumn === null ||
+            selectionEndRow === null ||
+            selectionEndColumn === null
+              ? undefined
+              : {
+                  start: {
+                    row: Number(selectionStartRow),
+                    column: Number(selectionStartColumn)
+                  },
+                  end: {
+                    row: Number(selectionEndRow),
+                    column: Number(selectionEndColumn)
+                  }
+                },
+          snippet: file.ok ? lineAt(file.text, startRow) : ''
+        });
+      }
+    } finally {
+      statement.free();
+    }
+
+    return {
+      ok: true,
+      indexPath,
+      total: definitions.length,
+      definitions
     };
   } catch (error) {
     return failure(error instanceof Error ? error.message : String(error));

@@ -1,10 +1,27 @@
 {
   "name": "syntax-map-mcp",
-  "version": "0.1.0",
-  "private": true,
+  "version": "0.1.1",
+  "description": "Tree-sitter based code analysis MCP server",
+  "license": "MIT",
   "type": "module",
   "bin": {
     "syntax-map-mcp": "./dist/cli.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kht6163/syntax-map-mcp.git"
+  },
+  "homepage": "https://github.com/kht6163/syntax-map-mcp#readme",
+  "bugs": {
+    "url": "https://github.com/kht6163/syntax-map-mcp/issues"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public"
   },
   "scripts": {
     "dev": "tsx src/cli.ts",

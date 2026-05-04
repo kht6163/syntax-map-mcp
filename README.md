@@ -19,7 +19,7 @@ npm run typecheck
 ## 실행
 
 ```bash
-node dist/cli.js --workspace-root /path/to/workspace
+npx -y syntax-map-mcp --workspace-root /path/to/workspace
 ```
 
 `workspaceRoot` 결정 순서:
@@ -38,6 +38,7 @@ node dist/cli.js --workspace-root /path/to/workspace
 - `build_context`: 여러 파일 요약을 markdown 컨텍스트로 구성
 - `index_workspace`: 지원 소스 파일을 파싱해 SQLite 심볼 인덱스 생성 또는 갱신
 - `search_symbols`: SQLite 인덱스에서 심볼 이름 검색
+- `find_indexed_definition`: SQLite 인덱스에서 정확한 심볼 정의 검색 및 snippet 반환
 - `get_index_status`: 인덱스 경로, 인덱싱된 파일 수, 심볼 수, stale 파일 수 반환
 - `clear_index`: SQLite 인덱스 파일 삭제
 
@@ -45,7 +46,7 @@ node dist/cli.js --workspace-root /path/to/workspace
 
 `index_workspace`는 `workspaceRoot` 아래의 `.syntax-map-mcp/index.sqlite`에 인덱스를 저장합니다. 인덱싱 대상은 `.js`, `.jsx`, `.ts`, `.tsx`, `.py` 파일이며, `.git`, `.syntax-map-mcp`, `dist`, `node_modules` 디렉터리는 제외합니다.
 
-파일 변경 여부는 `mtimeMs`와 `size`로 판단합니다. 다시 `index_workspace`를 호출하면 변경된 파일만 재파싱하고, 삭제된 파일은 인덱스에서 제거합니다. 자동 watch 모드는 아직 포함하지 않았습니다.
+파일 변경 여부는 `mtimeMs`와 `size`로 판단합니다. 다시 `index_workspace`를 호출하면 변경된 파일만 재파싱하고, 삭제된 파일은 인덱스에서 제거합니다. `find_indexed_definition`은 인덱스에 저장된 정의 위치를 조회한 뒤 현재 파일에서 해당 줄 snippet을 읽어 반환합니다. 자동 watch 모드는 아직 포함하지 않았습니다.
 
 ## MCP 설정 예시
 
@@ -53,9 +54,10 @@ node dist/cli.js --workspace-root /path/to/workspace
 {
   "mcpServers": {
     "syntax-map-mcp": {
-      "command": "node",
+      "command": "npx",
       "args": [
-        "/Users/hantaekim/my-project/tree-sitter/dist/cli.js",
+        "-y",
+        "syntax-map-mcp",
         "--workspace-root",
         "/path/to/workspace"
       ]
