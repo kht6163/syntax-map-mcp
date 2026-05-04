@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- `build_context` 인덱스 검색 metadata에 `summarizedFiles`와 `omittedFiles`를 추가했습니다.
 - `build_context`에 `maxFiles` 옵션을 추가해 인덱스 검색 기반 파일 요약 수를 제한할 수 있게 했습니다.
 - 인덱스 기반 심볼/정의/참조 검색 결과를 소스 위치 기준으로 안정 정렬하도록 했습니다.
 - `build_context`의 인덱스 검색 응답에 `metadata`를 추가해 stale 상태와 refresh 여부를 확인할 수 있게 했습니다.

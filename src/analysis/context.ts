@@ -40,6 +40,8 @@ export type BuildContextResult =
         staleFiles: number;
         refreshed: boolean;
         total: number;
+        summarizedFiles: number;
+        omittedFiles: number;
       };
     }
   | ToolFailure;
@@ -90,7 +92,8 @@ async function buildIndexedSearchContext(
   });
   if (!search.ok) return search;
 
-  const paths = limitPaths([...new Set(search.symbols.map(symbol => symbol.path))], input.maxFiles);
+  const allPaths = [...new Set(search.symbols.map(symbol => symbol.path))];
+  const paths = limitPaths(allPaths, input.maxFiles);
   const summaries: FileSummary[] = [];
 
   for (const filePath of paths) {
@@ -108,7 +111,9 @@ async function buildIndexedSearchContext(
       isStale: search.isStale,
       staleFiles: search.staleFiles,
       refreshed: search.refreshed,
-      total: search.total
+      total: search.total,
+      summarizedFiles: paths.length,
+      omittedFiles: Math.max(0, allPaths.length - paths.length)
     }
   };
 }
@@ -125,10 +130,8 @@ async function buildIndexedReferenceContext(
   });
   if (!search.ok) return search;
 
-  const paths = limitPaths(
-    [...new Set(search.references.map(reference => reference.path))],
-    input.maxFiles
-  );
+  const allPaths = [...new Set(search.references.map(reference => reference.path))];
+  const paths = limitPaths(allPaths, input.maxFiles);
   const summaries: FileSummary[] = [];
 
   for (const filePath of paths) {
@@ -146,7 +149,9 @@ async function buildIndexedReferenceContext(
       isStale: search.isStale,
       staleFiles: search.staleFiles,
       refreshed: search.refreshed,
-      total: search.total
+      total: search.total,
+      summarizedFiles: paths.length,
+      omittedFiles: Math.max(0, allPaths.length - paths.length)
     }
   };
 }

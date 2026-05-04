@@ -264,7 +264,9 @@ describe('createToolHandlers', () => {
             isStale: false,
             staleFiles: 0,
             refreshed: false,
-            total: expect.any(Number)
+            total: expect.any(Number),
+            summarizedFiles: 1,
+            omittedFiles: 0
           },
           markdown: expect.stringContaining('## Indexed Search Results')
         })
@@ -306,7 +308,9 @@ describe('createToolHandlers', () => {
             isStale: false,
             staleFiles: 0,
             refreshed: false,
-            total: expect.any(Number)
+            total: expect.any(Number),
+            summarizedFiles: 1,
+            omittedFiles: 0
           },
           markdown: expect.stringContaining('### formatUser')
         })

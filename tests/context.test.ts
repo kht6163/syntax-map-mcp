@@ -76,7 +76,9 @@ describe('buildContext', () => {
               isStale: false,
               staleFiles: 0,
               refreshed: false,
-              total: expect.any(Number)
+              total: expect.any(Number),
+              summarizedFiles: 1,
+              omittedFiles: 0
             }
           })
         );
@@ -120,7 +122,9 @@ describe('buildContext', () => {
               isStale: false,
               staleFiles: 0,
               refreshed: false,
-              total: expect.any(Number)
+              total: expect.any(Number),
+              summarizedFiles: 1,
+              omittedFiles: 0
             }
           })
         );
@@ -164,6 +168,14 @@ describe('buildContext', () => {
 
       expect(context.ok).toBe(true);
       if (context.ok) {
+        expect(context).toEqual(
+          expect.objectContaining({
+            metadata: expect.objectContaining({
+              summarizedFiles: 1,
+              omittedFiles: 1
+            })
+          })
+        );
         expect(context.markdown).toContain('a.ts:1');
         expect(context.markdown).toContain('b.ts:1');
         expect(context.markdown).toContain('## a.ts');

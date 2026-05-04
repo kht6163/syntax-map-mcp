@@ -179,7 +179,9 @@ syntax-map-mcp의 주요 MCP 도구 입력과 응답 예시입니다. 응답 예
     "isStale": false,
     "staleFiles": 0,
     "refreshed": true,
-    "total": 1
+    "total": 1,
+    "summarizedFiles": 1,
+    "omittedFiles": 0
   },
   "markdown": "# Code Context\n\n## Indexed Search Results\n\n### UserService\n\nsrc/users.ts:8\n\n```typescript\nexport class UserService {\n```"
 }
