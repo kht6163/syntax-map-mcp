@@ -36,11 +36,11 @@ npx -y syntax-map-mcp --workspace-root /path/to/workspace
 - `summarize_file`: 파일 언어, 라인 수, imports, exports, symbols 요약
 - `run_query`: 파일 하나에 tree-sitter query 실행
 - `build_context`: 여러 파일 요약을 markdown 컨텍스트로 구성
-- `index_workspace`: 지원 소스 파일을 파싱해 SQLite 심볼 인덱스 생성 또는 갱신
+- `index_workspace`: 지원 소스 파일을 파싱해 SQLite 심볼/참조 인덱스 생성 또는 갱신
 - `search_symbols`: SQLite 인덱스에서 심볼 이름 검색
 - `find_indexed_definition`: SQLite 인덱스에서 정확한 심볼 정의 검색 및 snippet 반환
 - `find_indexed_references`: SQLite 인덱스에서 식별자 참조 검색 및 snippet 반환
-- `get_index_status`: 인덱스 경로, 인덱싱된 파일 수, 심볼 수, stale 파일 수 반환
+- `get_index_status`: 인덱스 경로, 인덱싱된 파일 수, 심볼 수, 참조 수, stale 파일 수 반환
 - `clear_index`: SQLite 인덱스 파일 삭제
 
 ## SQLite 인덱스

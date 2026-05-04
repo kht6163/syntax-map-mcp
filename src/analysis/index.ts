@@ -17,6 +17,7 @@ type IndexResult =
       skippedFiles: number;
       removedFiles: number;
       symbols: number;
+      references: number;
     }
   | ToolFailure;
 
@@ -80,6 +81,7 @@ type IndexStatusResult =
       indexPath: string;
       indexedFiles: number;
       symbols: number;
+      references: number;
       staleFiles: number;
     }
   | ToolFailure;
@@ -522,7 +524,8 @@ export async function indexWorkspace(workspace: Workspace): Promise<IndexResult>
       indexedFiles,
       skippedFiles,
       removedFiles,
-      symbols: scalarCount(database, 'SELECT COUNT(*) FROM symbols')
+      symbols: scalarCount(database, 'SELECT COUNT(*) FROM symbols'),
+      references: scalarCount(database, 'SELECT COUNT(*) FROM reference_captures')
     };
   } catch (error) {
     return failure(error instanceof Error ? error.message : String(error));
@@ -865,6 +868,7 @@ export async function getIndexStatus(workspace: Workspace): Promise<IndexStatusR
       indexPath,
       indexedFiles: scalarCount(database, 'SELECT COUNT(*) FROM files WHERE parse_status = "ok"'),
       symbols: scalarCount(database, 'SELECT COUNT(*) FROM symbols'),
+      references: scalarCount(database, 'SELECT COUNT(*) FROM reference_captures'),
       staleFiles
     };
   } catch (error) {

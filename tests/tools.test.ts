@@ -151,9 +151,11 @@ describe('createToolHandlers', () => {
           ok: true,
           indexedFiles: expect.any(Number),
           symbols: expect.any(Number),
+          references: expect.any(Number),
           indexPath: expect.stringContaining('.syntax-map-mcp/index.sqlite')
         })
       );
+      expect((indexResult.structuredContent as { references: number }).references).toBeGreaterThan(0);
 
       const searchResult = await handlers.searchSymbols({ query: 'UserService' });
       expect(searchResult.structuredContent).toEqual(
@@ -218,8 +220,12 @@ describe('createToolHandlers', () => {
           ok: true,
           indexedFiles: expect.any(Number),
           symbols: expect.any(Number),
+          references: expect.any(Number),
           staleFiles: 0
         })
+      );
+      expect((statusResult.structuredContent as { references: number }).references).toBeGreaterThan(
+        0
       );
 
       const clearResult = await handlers.clearIndex({});
