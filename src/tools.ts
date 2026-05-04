@@ -113,6 +113,7 @@ export function createToolHandlers(workspace: Workspace) {
       refreshIfStale?: boolean;
       contextBefore?: number;
       contextAfter?: number;
+      includePreview?: boolean;
     }): Promise<CallToolResult> {
       const result = await searchIndexedSymbols(workspace, input);
       if (!result.ok) return toolFailure(result.error.code, result.error.message);
@@ -126,6 +127,7 @@ export function createToolHandlers(workspace: Workspace) {
       refreshIfStale?: boolean;
       contextBefore?: number;
       contextAfter?: number;
+      includePreview?: boolean;
     }): Promise<CallToolResult> {
       const result = await findIndexedDefinitions(workspace, input);
       if (!result.ok) return toolFailure(result.error.code, result.error.message);
@@ -138,6 +140,7 @@ export function createToolHandlers(workspace: Workspace) {
       refreshIfStale?: boolean;
       contextBefore?: number;
       contextAfter?: number;
+      includePreview?: boolean;
     }): Promise<CallToolResult> {
       const result = await findIndexedReferences(workspace, input);
       if (!result.ok) return toolFailure(result.error.code, result.error.message);
@@ -259,7 +262,8 @@ export function registerTools(server: McpServer, workspace: Workspace): void {
         limit: z.number().int().positive().max(500).optional(),
         refreshIfStale: z.boolean().optional(),
         contextBefore: contextLineCountSchema.optional(),
-        contextAfter: contextLineCountSchema.optional()
+        contextAfter: contextLineCountSchema.optional(),
+        includePreview: z.boolean().optional()
       }
     },
     handlers.searchSymbols
@@ -276,7 +280,8 @@ export function registerTools(server: McpServer, workspace: Workspace): void {
         limit: z.number().int().positive().max(500).optional(),
         refreshIfStale: z.boolean().optional(),
         contextBefore: contextLineCountSchema.optional(),
-        contextAfter: contextLineCountSchema.optional()
+        contextAfter: contextLineCountSchema.optional(),
+        includePreview: z.boolean().optional()
       }
     },
     handlers.findIndexedDefinition
@@ -292,7 +297,8 @@ export function registerTools(server: McpServer, workspace: Workspace): void {
         limit: z.number().int().positive().max(500).optional(),
         refreshIfStale: z.boolean().optional(),
         contextBefore: contextLineCountSchema.optional(),
-        contextAfter: contextLineCountSchema.optional()
+        contextAfter: contextLineCountSchema.optional(),
+        includePreview: z.boolean().optional()
       }
     },
     handlers.findIndexedReferences

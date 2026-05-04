@@ -47,7 +47,7 @@ npx -y syntax-map-mcp --workspace-root /path/to/workspace
 
 `index_workspace`는 `workspaceRoot` 아래의 `.syntax-map-mcp/index.sqlite`에 인덱스를 저장합니다. 인덱싱 대상은 `.js`, `.jsx`, `.ts`, `.tsx`, `.py` 파일이며, `.git`, `.syntax-map-mcp`, `dist`, `node_modules` 디렉터리는 제외합니다.
 
-파일 변경 여부는 `mtimeMs`와 `size`로 판단합니다. 다시 `index_workspace`를 호출하면 변경된 파일만 재파싱하고, 삭제된 파일은 인덱스에서 제거합니다. `search_symbols`, `find_indexed_definition`, `find_indexed_references`는 `isStale`, `staleFiles`, `refreshed`를 반환해 검색 결과가 최신 인덱스 기반인지 알려줍니다. 세 도구에 `refreshIfStale: true`를 전달하면 stale 파일이 있을 때 먼저 인덱스를 갱신한 뒤 검색합니다. 인덱스 검색 도구는 인덱스에 저장된 위치를 조회한 뒤 현재 파일에서 해당 줄 snippet을 읽어 반환합니다. `contextBefore`, `contextAfter`를 0-10 사이 정수로 전달하면 snippet 주변 라인도 함께 반환합니다. 자동 watch 모드는 아직 포함하지 않았습니다.
+파일 변경 여부는 `mtimeMs`와 `size`로 판단합니다. 다시 `index_workspace`를 호출하면 변경된 파일만 재파싱하고, 삭제된 파일은 인덱스에서 제거합니다. `search_symbols`, `find_indexed_definition`, `find_indexed_references`는 `isStale`, `staleFiles`, `refreshed`를 반환해 검색 결과가 최신 인덱스 기반인지 알려줍니다. 세 도구에 `refreshIfStale: true`를 전달하면 stale 파일이 있을 때 먼저 인덱스를 갱신한 뒤 검색합니다. 인덱스 검색 도구는 인덱스에 저장된 위치를 조회한 뒤 현재 파일에서 해당 줄 snippet을 읽어 반환합니다. `contextBefore`, `contextAfter`를 0-10 사이 정수로 전달하면 snippet 주변 라인도 함께 반환합니다. `includePreview: true`를 전달하면 `path:line` 헤더와 코드블록으로 구성된 `previewMarkdown`도 함께 반환합니다. 자동 watch 모드는 아직 포함하지 않았습니다.
 
 `summarize_file`은 `sources` 필드로 `symbols`, `imports`, `exports`가 어떤 방식으로 추출되었는지 반환합니다.
 
@@ -92,7 +92,8 @@ Python은 JavaScript/TypeScript처럼 명시적인 `export` 문법이 없으므�
   "kinds": ["class"],
   "refreshIfStale": true,
   "contextBefore": 2,
-  "contextAfter": 2
+  "contextAfter": 2,
+  "includePreview": true
 }
 ```
 
@@ -112,7 +113,8 @@ Python은 JavaScript/TypeScript처럼 명시적인 `export` 문법이 없으므�
       "context": {
         "before": ["export type UserId = User['id'];", ""],
         "after": ["  constructor(private readonly users: User[]) {}", ""]
-      }
+      },
+      "previewMarkdown": "src/users.ts:8\n\n```typescript\nexport type UserId = User['id'];\n\nexport class UserService {\n  constructor(private readonly users: User[]) {}\n\n```"
     }
   ]
 }

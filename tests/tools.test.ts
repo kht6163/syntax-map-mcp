@@ -199,7 +199,8 @@ describe('createToolHandlers', () => {
       const definitionWithContext = await handlers.findIndexedDefinition({
         name: 'UserService',
         contextBefore: 2,
-        contextAfter: 1
+        contextAfter: 1,
+        includePreview: true
       });
       expect(definitionWithContext.structuredContent).toEqual(
         expect.objectContaining({
@@ -210,7 +211,17 @@ describe('createToolHandlers', () => {
               context: {
                 before: ['export type UserId = User[\'id\'];', ''],
                 after: ['  constructor(private readonly users: User[]) {}']
-              }
+              },
+              previewMarkdown: [
+                'sample.ts:8',
+                '',
+                '```typescript',
+                "export type UserId = User['id'];",
+                '',
+                'export class UserService {',
+                '  constructor(private readonly users: User[]) {}',
+                '```'
+              ].join('\n')
             })
           ]
         })

@@ -35,6 +35,7 @@ type SearchSymbolsResult =
           language: SupportedLanguage;
           snippet: string;
           context?: SnippetContext;
+          previewMarkdown?: string;
         }
       >;
     }
@@ -54,6 +55,7 @@ type IndexedDefinitionResult =
           language: SupportedLanguage;
           snippet: string;
           context?: SnippetContext;
+          previewMarkdown?: string;
         }
       >;
     }
@@ -75,6 +77,7 @@ type IndexedReferencesResult =
         range: SourceRange;
         snippet: string;
         context?: SnippetContext;
+        previewMarkdown?: string;
       }>;
     }
   | ToolFailure;
@@ -116,6 +119,7 @@ type IndexReadState = {
 type ContextOptions = {
   contextBefore?: number;
   contextAfter?: number;
+  includePreview?: boolean;
 };
 
 type SnippetContext = {
@@ -437,28 +441,53 @@ function rowValue(row: Record<string, SqlValue>, key: string): SqlValue {
 }
 
 function snippetDetails(
+  path: string,
+  language: SupportedLanguage,
   text: string | undefined,
   row: number,
   options: ContextOptions
-): { snippet: string; context?: SnippetContext } {
+): { snippet: string; context?: SnippetContext; previewMarkdown?: string } {
   if (text === undefined) return { snippet: '' };
 
   const lines = text.split(/\r?\n/);
   const snippet = lines[row] ?? '';
   const beforeCount = options.contextBefore ?? 0;
   const afterCount = options.contextAfter ?? 0;
+  const context =
+    beforeCount === 0 && afterCount === 0
+      ? undefined
+      : {
+          before: lines.slice(Math.max(0, row - beforeCount), row),
+          after: lines.slice(row + 1, row + 1 + afterCount)
+        };
+  const details: { snippet: string; context?: SnippetContext; previewMarkdown?: string } = {
+    snippet,
+  };
 
-  if (beforeCount === 0 && afterCount === 0) {
-    return { snippet };
+  if (context) details.context = context;
+  if (options.includePreview) {
+    details.previewMarkdown = previewMarkdown(path, language, row, snippet, context);
   }
 
-  return {
+  return details;
+}
+
+function previewMarkdown(
+  filePath: string,
+  language: SupportedLanguage,
+  row: number,
+  snippet: string,
+  context?: SnippetContext
+): string {
+  return [
+    `${filePath}:${row + 1}`,
+    '',
+    `\`\`\`${language}`,
+    ...(context?.before ?? []),
     snippet,
-    context: {
-      before: lines.slice(Math.max(0, row - beforeCount), row),
-      after: lines.slice(row + 1, row + 1 + afterCount)
-    }
-  };
+    ...(context?.after ?? []),
+    '```'
+  ].join('\n');
 }
 
 export async function indexWorkspace(workspace: Workspace): Promise<IndexResult> {
@@ -624,6 +653,7 @@ export async function findIndexedDefinitions(
         language: SupportedLanguage;
         snippet: string;
         context?: SnippetContext;
+        previewMarkdown?: string;
       }
     > = [];
 
@@ -671,7 +701,13 @@ export async function findIndexedDefinitions(
                     column: Number(selectionEndColumn)
                   }
                 },
-          ...snippetDetails(file.ok ? file.text : undefined, startRow, input)
+          ...snippetDetails(
+            filePath,
+            rowValue(row, 'language') as SupportedLanguage,
+            file.ok ? file.text : undefined,
+            startRow,
+            input
+          )
         });
       }
     } finally {
@@ -734,6 +770,7 @@ export async function findIndexedReferences(
       range: SourceRange;
       snippet: string;
       context?: SnippetContext;
+      previewMarkdown?: string;
     }> = [];
 
     try {
@@ -758,7 +795,13 @@ export async function findIndexedReferences(
               column: Number(rowValue(row, 'end_column'))
             }
           },
-          ...snippetDetails(file.ok ? file.text : undefined, startRow, input)
+          ...snippetDetails(
+            filePath,
+            rowValue(row, 'language') as SupportedLanguage,
+            file.ok ? file.text : undefined,
+            startRow,
+            input
+          )
         });
       }
     } finally {
@@ -836,6 +879,7 @@ export async function searchSymbols(
         language: SupportedLanguage;
         snippet: string;
         context?: SnippetContext;
+        previewMarkdown?: string;
       }
     > = [];
 
@@ -883,7 +927,13 @@ export async function searchSymbols(
                     column: Number(selectionEndColumn)
                   }
                 },
-          ...snippetDetails(file.ok ? file.text : undefined, startRow, input)
+          ...snippetDetails(
+            filePath,
+            rowValue(row, 'language') as SupportedLanguage,
+            file.ok ? file.text : undefined,
+            startRow,
+            input
+          )
         });
       }
     } finally {

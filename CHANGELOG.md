@@ -6,6 +6,7 @@
 - Python 파일의 `summarize_file.exports`가 top-level `__all__`을 기준으로 반환되는 동작을 문서화했습니다.
 - 배포 전 `typecheck`, 테스트, 빌드, 패키징 dry-run을 한 번에 실행하는 `release:check` 스크립트를 추가했습니다.
 - Python 파일의 top-level `__all__` 문자열 이름을 `summarize_file.exports`로 반환하도록 했습니다.
+- 인덱스 검색 도구에 `includePreview` 옵션을 추가해 `previewMarkdown`을 반환할 수 있게 했습니다.
 
 ## 0.1.2 - 2026-05-04
 
