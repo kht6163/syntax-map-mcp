@@ -94,14 +94,24 @@ export function createToolHandlers(workspace: Workspace) {
     async buildContext(input: {
       paths?: string[];
       detail: 'compact' | 'full';
-      indexedSearch?: {
-        query: string;
-        kinds?: CodeSymbol['kind'][];
-        limit?: number;
-        refreshIfStale?: boolean;
-        contextBefore?: number;
-        contextAfter?: number;
-      };
+      indexedSearch?:
+        | {
+            mode?: 'symbols';
+            query: string;
+            kinds?: CodeSymbol['kind'][];
+            limit?: number;
+            refreshIfStale?: boolean;
+            contextBefore?: number;
+            contextAfter?: number;
+          }
+        | {
+            mode: 'references';
+            name: string;
+            limit?: number;
+            refreshIfStale?: boolean;
+            contextBefore?: number;
+            contextAfter?: number;
+          };
     }): Promise<CallToolResult> {
       const result = await buildContextAnalysis(workspace, input);
       if (!result.ok) return toolFailure(result.error.code, result.error.message);
@@ -245,14 +255,25 @@ export function registerTools(server: McpServer, workspace: Workspace): void {
         paths: z.array(z.string()).optional(),
         detail: detailSchema,
         indexedSearch: z
-          .object({
-            query: z.string(),
-            kinds: z.array(symbolKindSchema).optional(),
-            limit: z.number().int().positive().max(500).optional(),
-            refreshIfStale: z.boolean().optional(),
-            contextBefore: contextLineCountSchema.optional(),
-            contextAfter: contextLineCountSchema.optional()
-          })
+          .union([
+            z.object({
+              mode: z.literal('symbols').optional(),
+              query: z.string(),
+              kinds: z.array(symbolKindSchema).optional(),
+              limit: z.number().int().positive().max(500).optional(),
+              refreshIfStale: z.boolean().optional(),
+              contextBefore: contextLineCountSchema.optional(),
+              contextAfter: contextLineCountSchema.optional()
+            }),
+            z.object({
+              mode: z.literal('references'),
+              name: z.string(),
+              limit: z.number().int().positive().max(500).optional(),
+              refreshIfStale: z.boolean().optional(),
+              contextBefore: contextLineCountSchema.optional(),
+              contextAfter: contextLineCountSchema.optional()
+            })
+          ])
           .optional()
       }
     },

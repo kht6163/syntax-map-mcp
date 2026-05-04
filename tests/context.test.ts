@@ -80,6 +80,38 @@ describe('buildContext', () => {
     }
   });
 
+  it('builds markdown context from indexed reference results', async () => {
+    const workspaceRoot = await mkdtemp(path.join(tmpdir(), 'syntax-map-context-references-'));
+    await cp(fixtureRoot, workspaceRoot, { recursive: true });
+
+    try {
+      const workspace = await createWorkspace(workspaceRoot);
+      await indexWorkspace(workspace);
+
+      const context = await buildContext(workspace, {
+        detail: 'compact',
+        indexedSearch: {
+          mode: 'references',
+          name: 'formatUser',
+          contextBefore: 1,
+          contextAfter: 1
+        }
+      });
+
+      expect(context.ok).toBe(true);
+      if (context.ok) {
+        expect(context.markdown).toContain('## Indexed Search Results');
+        expect(context.markdown).toContain('### formatUser');
+        expect(context.markdown).toContain('sample.ts:');
+        expect(context.markdown).toContain('```typescript');
+        expect(context.markdown).toContain('formatUser');
+        expect(context.markdown).toContain('## sample.ts');
+      }
+    } finally {
+      await rm(workspaceRoot, { recursive: true, force: true });
+    }
+  });
+
   it('propagates failures from invalid paths', async () => {
     const workspace = await createWorkspace(fixtureRoot);
     const context = await buildContext(workspace, {

@@ -265,6 +265,22 @@ describe('createToolHandlers', () => {
         'sample.ts:8'
       );
 
+      const referenceContextResult = await handlers.buildContext({
+        detail: 'compact',
+        indexedSearch: {
+          mode: 'references',
+          name: 'formatUser',
+          contextBefore: 1,
+          contextAfter: 1
+        }
+      });
+      expect(referenceContextResult.structuredContent).toEqual(
+        expect.objectContaining({
+          ok: true,
+          markdown: expect.stringContaining('### formatUser')
+        })
+      );
+
       const statusResult = await handlers.getIndexStatus({});
       expect(statusResult.structuredContent).toEqual(
         expect.objectContaining({

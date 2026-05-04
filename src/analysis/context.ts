@@ -1,19 +1,31 @@
 import type { CodeSymbol, ToolFailure } from '../types.js';
 import type { Workspace } from '../workspace.js';
-import { searchSymbols } from './index.js';
+import { findIndexedReferences, searchSymbols } from './index.js';
 import { summarizeFile, type FileSummary } from './summary.js';
+
+type IndexedSearchInput =
+  | {
+      mode?: 'symbols';
+      query: string;
+      kinds?: CodeSymbol['kind'][];
+      limit?: number;
+      refreshIfStale?: boolean;
+      contextBefore?: number;
+      contextAfter?: number;
+    }
+  | {
+      mode: 'references';
+      name: string;
+      limit?: number;
+      refreshIfStale?: boolean;
+      contextBefore?: number;
+      contextAfter?: number;
+    };
 
 export type BuildContextInput = {
   paths?: string[];
   detail: 'compact' | 'full';
-  indexedSearch?: {
-    query: string;
-    kinds?: CodeSymbol['kind'][];
-    limit?: number;
-    refreshIfStale?: boolean;
-    contextBefore?: number;
-    contextAfter?: number;
-  };
+  indexedSearch?: IndexedSearchInput;
 };
 
 export type BuildContextResult =
@@ -56,8 +68,14 @@ async function buildIndexedSearchContext(
   workspace: Workspace,
   input: BuildContextInput & { indexedSearch: NonNullable<BuildContextInput['indexedSearch']> }
 ): Promise<BuildContextResult> {
+  const { detail, indexedSearch } = input;
+
+  if (indexedSearch.mode === 'references') {
+    return buildIndexedReferenceContext(workspace, { detail, indexedSearch });
+  }
+
   const search = await searchSymbols(workspace, {
-    ...input.indexedSearch,
+    ...indexedSearch,
     includePreview: true
   });
   if (!search.ok) return search;
@@ -73,7 +91,34 @@ async function buildIndexedSearchContext(
 
   return {
     ok: true,
-    markdown: renderMarkdown(summaries, input.detail, renderIndexedSearchResults(search.symbols))
+    markdown: renderMarkdown(summaries, detail, renderIndexedSearchResults(search.symbols))
+  };
+}
+
+async function buildIndexedReferenceContext(
+  workspace: Workspace,
+  input: Pick<BuildContextInput, 'detail'> & {
+    indexedSearch: Extract<NonNullable<BuildContextInput['indexedSearch']>, { mode: 'references' }>;
+  }
+): Promise<BuildContextResult> {
+  const search = await findIndexedReferences(workspace, {
+    ...input.indexedSearch,
+    includePreview: true
+  });
+  if (!search.ok) return search;
+
+  const paths = [...new Set(search.references.map(reference => reference.path))];
+  const summaries: FileSummary[] = [];
+
+  for (const filePath of paths) {
+    const summary = await summarizeFile(workspace, filePath);
+    if (!summary.ok) return summary;
+    summaries.push(summary);
+  }
+
+  return {
+    ok: true,
+    markdown: renderMarkdown(summaries, input.detail, renderIndexedSearchResults(search.references))
   };
 }
 
