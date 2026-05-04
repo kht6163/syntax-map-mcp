@@ -60,6 +60,11 @@ export async function createWorkspace(workspaceRoot: string): Promise<Workspace>
       return failure('WORKSPACE_OUTSIDE_ROOT', `Path is outside workspaceRoot: ${inputPath}`);
     }
 
+    const actualExtension = path.extname(actualPath);
+    if (!SUPPORTED_EXTENSIONS.has(actualExtension)) {
+      return failure('UNSUPPORTED_EXTENSION', `Unsupported extension: ${actualExtension}`);
+    }
+
     const fileStat = await stat(actualPath);
     if (!fileStat.isFile()) {
       return failure('FILE_NOT_FOUND', `Not a file: ${inputPath}`);
