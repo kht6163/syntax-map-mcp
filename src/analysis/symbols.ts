@@ -20,7 +20,9 @@ const typeScriptSymbolPatterns: SymbolPattern[] = [
   { kind: 'interface', query: '(interface_declaration name: (type_identifier) @name) @definition' },
   { kind: 'type', query: '(type_alias_declaration name: (type_identifier) @name) @definition' },
   { kind: 'class', query: '(class_declaration name: (type_identifier) @name) @definition' },
+  { kind: 'class', query: '(abstract_class_declaration name: (type_identifier) @name) @definition' },
   { kind: 'method', query: '(method_definition name: (property_identifier) @name) @definition' },
+  { kind: 'method', query: '(abstract_method_signature name: (property_identifier) @name) @definition' },
   { kind: 'function', query: '(function_declaration name: (identifier) @name) @definition' },
   { kind: 'variable', query: '(variable_declarator name: (identifier) @name) @definition' }
 ];
@@ -93,7 +95,7 @@ function parentNameForSymbol(
   const classNode =
     parsed.language === 'python'
       ? directPythonMethodClass(definition)
-      : findAncestor(definition, 'class_declaration');
+      : findAncestor(definition, ['class_declaration', 'abstract_class_declaration']);
 
   return classNode?.childForFieldName('name')?.text;
 }
@@ -115,7 +117,9 @@ function isDirectPythonMethod(definition: Parser.SyntaxNode): boolean {
 }
 
 function directPythonMethodClass(definition: Parser.SyntaxNode): Parser.SyntaxNode | undefined {
-  const block = definition.parent;
+  const methodNode =
+    definition.parent?.type === 'decorated_definition' ? definition.parent : definition;
+  const block = methodNode.parent;
   const classNode = block?.parent;
 
   if (block?.type !== 'block' || classNode?.type !== 'class_definition') return undefined;
@@ -123,11 +127,11 @@ function directPythonMethodClass(definition: Parser.SyntaxNode): Parser.SyntaxNo
   return classNode;
 }
 
-function findAncestor(node: Parser.SyntaxNode, type: string): Parser.SyntaxNode | undefined {
+function findAncestor(node: Parser.SyntaxNode, types: string[]): Parser.SyntaxNode | undefined {
   let current = node.parent;
 
   while (current) {
-    if (current.type === type) return current;
+    if (types.includes(current.type)) return current;
     current = current.parent;
   }
 

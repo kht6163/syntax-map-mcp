@@ -102,6 +102,43 @@ describe('listSymbols', () => {
     );
   });
 
+  it('extracts TypeScript abstract classes and methods', () => {
+    const symbols = listSymbols(
+      parseInline(
+        'abstract.ts',
+        `export abstract class BaseService {
+  abstract run(): void;
+}
+`
+      )
+    );
+
+    expect(symbolLabels(symbols)).toContain('class:BaseService');
+    expect(symbolLabels(symbols)).toContain('method:run');
+    expect(symbols.find(symbol => symbol.name === 'run')).toEqual(
+      expect.objectContaining({ kind: 'method', parentName: 'BaseService' })
+    );
+  });
+
+  it('classifies decorated Python class functions as methods', () => {
+    const symbols = listSymbols(
+      parseInline(
+        'decorated.py',
+        `class Factory:
+    @classmethod
+    def make(cls):
+        return cls()
+`
+      )
+    );
+
+    expect(symbolLabels(symbols)).toContain('class:Factory');
+    expect(symbolLabels(symbols)).toContain('method:make');
+    expect(symbols.find(symbol => symbol.name === 'make')).toEqual(
+      expect.objectContaining({ kind: 'method', parentName: 'Factory' })
+    );
+  });
+
   it('excludes local TypeScript variables', () => {
     const symbols = listSymbols(
       parseInline(
