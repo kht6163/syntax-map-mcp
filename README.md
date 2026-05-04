@@ -51,6 +51,151 @@ npx -y syntax-map-mcp --workspace-root /path/to/workspace
 
 `summarize_file`은 `sources` 필드로 `symbols`, `imports`, `exports`가 어떤 방식으로 추출되었는지 반환합니다.
 
+Python은 JavaScript/TypeScript처럼 명시적인 `export` 문법이 없으므로 `summarize_file`의 `exports`는 빈 배열을 반환합니다.
+
+## 도구 사용 예시
+
+### summarize_file
+
+입력:
+
+```json
+{
+  "path": "src/index.ts"
+}
+```
+
+응답 일부:
+
+```json
+{
+  "ok": true,
+  "path": "src/index.ts",
+  "language": "typescript",
+  "imports": ["import { createServer } from './server.js';"],
+  "exports": ["export async function main() {"],
+  "sources": {
+    "symbols": "ast",
+    "imports": "ast",
+    "exports": "ast"
+  }
+}
+```
+
+### search_symbols
+
+입력:
+
+```json
+{
+  "query": "UserService",
+  "kinds": ["class"],
+  "refreshIfStale": true,
+  "contextBefore": 2,
+  "contextAfter": 2
+}
+```
+
+응답 일부:
+
+```json
+{
+  "ok": true,
+  "isStale": false,
+  "refreshed": true,
+  "symbols": [
+    {
+      "path": "src/users.ts",
+      "name": "UserService",
+      "kind": "class",
+      "snippet": "export class UserService {",
+      "context": {
+        "before": ["export type UserId = User['id'];", ""],
+        "after": ["  constructor(private readonly users: User[]) {}", ""]
+      }
+    }
+  ]
+}
+```
+
+### find_indexed_definition
+
+입력:
+
+```json
+{
+  "name": "UserService",
+  "refreshIfStale": true,
+  "contextBefore": 1,
+  "contextAfter": 1
+}
+```
+
+응답 일부:
+
+```json
+{
+  "ok": true,
+  "total": 1,
+  "definitions": [
+    {
+      "path": "src/users.ts",
+      "name": "UserService",
+      "kind": "class",
+      "snippet": "export class UserService {"
+    }
+  ]
+}
+```
+
+### find_indexed_references
+
+입력:
+
+```json
+{
+  "name": "formatUser",
+  "limit": 20,
+  "refreshIfStale": true
+}
+```
+
+응답 일부:
+
+```json
+{
+  "ok": true,
+  "references": [
+    {
+      "path": "src/users.ts",
+      "name": "formatUser",
+      "nodeType": "identifier",
+      "snippet": "formatUser(defaultUser);"
+    }
+  ]
+}
+```
+
+### get_index_status
+
+입력:
+
+```json
+{}
+```
+
+응답 일부:
+
+```json
+{
+  "ok": true,
+  "indexedFiles": 12,
+  "symbols": 84,
+  "references": 231,
+  "staleFiles": 0
+}
+```
+
 ## 변경 이력
 
 버전별 변경 내용은 [CHANGELOG.md](./CHANGELOG.md)를 참고하세요.

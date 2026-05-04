@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- README에 `summarize_file`, 인덱스 검색 도구, `get_index_status`의 입력/응답 예시를 추가했습니다.
+- Python 파일의 `summarize_file.exports`가 빈 배열로 반환되는 동작을 문서화했습니다.
+- 배포 전 `typecheck`, 테스트, 빌드, 패키징 dry-run을 한 번에 실행하는 `release:check` 스크립트를 추가했습니다.
+
 ## 0.1.2 - 2026-05-04
 
 - `summarize_file`의 `exports` 추출을 AST 기반으로 변경해 문자열 내부 텍스트가 export로 잘못 반환되지 않도록 했습니다.
