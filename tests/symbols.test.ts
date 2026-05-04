@@ -35,6 +35,11 @@ function symbolLabels(symbols: ReturnType<typeof listSymbols>) {
     .sort((left, right) => left.localeCompare(right));
 }
 
+const numericRangeShape = expect.objectContaining({
+  start: expect.objectContaining({ row: expect.any(Number), column: expect.any(Number) }),
+  end: expect.objectContaining({ row: expect.any(Number), column: expect.any(Number) })
+});
+
 describe('listSymbols', () => {
   it('extracts TypeScript symbols', async () => {
     const symbols = listSymbols(await parseFixture('sample.ts'));
@@ -51,12 +56,27 @@ describe('listSymbols', () => {
     expect(symbols.find(symbol => symbol.name === 'UserService')).toEqual(
       expect.objectContaining({
         kind: 'class',
-        range: expect.objectContaining({
-          start: expect.objectContaining({ row: expect.any(Number), column: expect.any(Number) }),
-          end: expect.objectContaining({ row: expect.any(Number), column: expect.any(Number) })
-        })
+        range: numericRangeShape,
+        selectionRange: numericRangeShape
       })
     );
+  });
+
+  it('extracts JavaScript symbols', async () => {
+    const symbols = listSymbols(await parseFixture('sample.js'));
+
+    expect(symbolLabels(symbols)).toEqual([
+      'class:FileReporter',
+      'function:makeReporter',
+      'method:report',
+      'variable:reporter'
+    ]);
+  });
+
+  it('extracts TSX symbols', async () => {
+    const symbols = listSymbols(await parseFixture('sample.tsx'));
+
+    expect(symbolLabels(symbols)).toEqual(['function:UserCard']);
   });
 
   it('extracts Python symbols', async () => {
