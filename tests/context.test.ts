@@ -4,6 +4,7 @@ import { buildContext } from '../src/analysis/context.js';
 import { createWorkspace } from '../src/workspace.js';
 
 const fixtureRoot = path.join(process.cwd(), 'tests', 'fixtures');
+const sampleLineCount = 22;
 
 describe('buildContext', () => {
   it('builds compact markdown context for files', async () => {
@@ -15,9 +16,15 @@ describe('buildContext', () => {
 
     expect(context.ok).toBe(true);
     if (context.ok) {
+      expect(context.markdown.startsWith('# Code Context')).toBe(true);
       expect(context.markdown).toContain('## sample.ts');
-      expect(context.markdown).toContain('class UserService');
-      expect(context.markdown).toContain('function format_user');
+      expect(context.markdown).toContain('- Language: typescript');
+      expect(context.markdown).toContain(`- Lines: ${sampleLineCount}`);
+      expect(context.markdown).toContain('- class UserService (8:8)');
+      expect(context.markdown).toContain('- method UserService.findUser (11:3)');
+      expect(context.markdown).toContain('- function format_user (21:1)');
+      expect(context.markdown).not.toContain('### Imports');
+      expect(context.markdown).not.toContain('### Exports');
     }
   });
 

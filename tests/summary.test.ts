@@ -1,9 +1,12 @@
 import path from 'node:path';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import os from 'node:os';
 import { describe, expect, it } from 'vitest';
 import { summarizeFile } from '../src/analysis/summary.js';
 import { createWorkspace } from '../src/workspace.js';
 
 const fixtureRoot = path.join(process.cwd(), 'tests', 'fixtures');
+const sampleLineCount = 22;
 
 describe('summarizeFile', () => {
   it('summarizes file structure', async () => {
@@ -15,7 +18,25 @@ describe('summarizeFile', () => {
       expect(summary.path).toBe('sample.ts');
       expect(summary.language).toBe('typescript');
       expect(summary.symbols.map(symbol => symbol.name)).toContain('UserService');
-      expect(summary.lineCount).toBeGreaterThan(1);
+      expect(summary.lineCount).toBe(sampleLineCount);
+    }
+  });
+
+  it('counts files without a trailing newline', async () => {
+    const workspaceRoot = await mkdtemp(path.join(os.tmpdir(), 'tree-sitter-summary-'));
+
+    try {
+      await writeFile(path.join(workspaceRoot, 'no-newline.ts'), 'const first = 1;\nconst second = 2;');
+
+      const workspace = await createWorkspace(workspaceRoot);
+      const summary = await summarizeFile(workspace, 'no-newline.ts');
+
+      expect(summary.ok).toBe(true);
+      if (summary.ok) {
+        expect(summary.lineCount).toBe(2);
+      }
+    } finally {
+      await rm(workspaceRoot, { recursive: true, force: true });
     }
   });
 

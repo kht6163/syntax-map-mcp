@@ -66,6 +66,8 @@ function renderSymbols(summary: FileSummary): string[] {
   return summary.symbols.map(symbol => {
     const row = symbol.range.start.row + 1;
     const column = symbol.range.start.column + 1;
-    return `- ${symbol.kind} ${symbol.name} (${row}:${column})`;
+    const name =
+      symbol.kind === 'method' && symbol.parentName ? `${symbol.parentName}.${symbol.name}` : symbol.name;
+    return `- ${symbol.kind} ${name} (${row}:${column})`;
   });
 }

@@ -37,7 +37,7 @@ export async function summarizeFile(
 function countLines(text: string): number {
   if (text.length === 0) return 0;
 
-  return text.split(/\r\n|\r|\n/).length;
+  return text.replace(/\r\n|\r|\n$/, '').split(/\r\n|\r|\n/).length;
 }
 
 function findImports(text: string): string[] {
