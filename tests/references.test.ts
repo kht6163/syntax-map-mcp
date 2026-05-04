@@ -44,6 +44,26 @@ describe('findReferences', () => {
     }
   });
 
+  it('finds JavaScript property identifier references by name', async () => {
+    const workspace = await createWorkspace(fixtureRoot);
+    const references = await findReferences(workspace, {
+      name: 'report',
+      paths: ['sample.js']
+    });
+
+    expect(references.ok).toBe(true);
+    if (references.ok) {
+      expect(references.references).toContainEqual(
+        expect.objectContaining({
+          path: 'sample.js',
+          name: 'report',
+          nodeType: 'property_identifier',
+          snippet: expect.stringContaining('reporter.report')
+        })
+      );
+    }
+  });
+
   it('includes path, node type, range, and snippet', async () => {
     const workspace = await createWorkspace(fixtureRoot);
     const references = await findReferences(workspace, {

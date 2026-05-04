@@ -54,10 +54,10 @@ function referenceQueryForLanguage(language: string): string {
   switch (language) {
     case 'typescript':
     case 'tsx':
-      return '[(identifier) (type_identifier)] @reference';
+      return '[(identifier) (type_identifier) (property_identifier)] @reference';
     case 'javascript':
+      return '[(identifier) (property_identifier)] @reference';
     case 'python':
-      return '(identifier) @reference';
     default:
       return '(identifier) @reference';
   }
