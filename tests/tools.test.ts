@@ -428,6 +428,60 @@ describe('createToolHandlers', () => {
       await rm(workspaceRoot, { recursive: true, force: true });
     }
   });
+
+  it('orders indexed search results by source location', async () => {
+    const workspaceRoot = await mkdtemp(path.join(tmpdir(), 'syntax-map-mcp-order-'));
+
+    try {
+      await writeFile(
+        path.join(workspaceRoot, 'a.ts'),
+        [
+          'export class ZebraThing {}',
+          'export class SharedThing {}',
+          'sharedThing();'
+        ].join('\n')
+      );
+      await writeFile(
+        path.join(workspaceRoot, 'b.ts'),
+        [
+          'export class AlphaThing {}',
+          'export class SharedThing {}',
+          'sharedThing();'
+        ].join('\n')
+      );
+
+      const handlers = createToolHandlers(await createWorkspace(workspaceRoot));
+      await handlers.indexWorkspace({});
+
+      const searchResult = await handlers.searchSymbols({ query: '', kinds: ['class'] });
+      expect(
+        (searchResult.structuredContent as { symbols: Array<{ path: string; name: string }> }).symbols.map(
+          symbol => `${symbol.path}:${symbol.name}`
+        )
+      ).toEqual([
+        'a.ts:ZebraThing',
+        'a.ts:SharedThing',
+        'b.ts:AlphaThing',
+        'b.ts:SharedThing'
+      ]);
+
+      const definitionResult = await handlers.findIndexedDefinition({ name: 'SharedThing' });
+      expect(
+        (definitionResult.structuredContent as { definitions: Array<{ path: string; name: string }> }).definitions.map(
+          definition => `${definition.path}:${definition.name}`
+        )
+      ).toEqual(['a.ts:SharedThing', 'b.ts:SharedThing']);
+
+      const referencesResult = await handlers.findIndexedReferences({ name: 'sharedThing' });
+      expect(
+        (referencesResult.structuredContent as { references: Array<{ path: string; name: string }> }).references.map(
+          reference => `${reference.path}:${reference.name}`
+        )
+      ).toEqual(['a.ts:sharedThing', 'b.ts:sharedThing']);
+    } finally {
+      await rm(workspaceRoot, { recursive: true, force: true });
+    }
+  });
 });
 
 describe('registerTools', () => {

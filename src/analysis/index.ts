@@ -642,7 +642,7 @@ export async function findIndexedDefinitions(
           selection_end_column
         FROM symbols
         WHERE ${where.join(' AND ')}
-        ORDER BY file_path ASC, start_row ASC, name ASC
+        ORDER BY file_path ASC, start_row ASC, start_column ASC, name ASC
         LIMIT ?
       `,
       params
@@ -757,7 +757,7 @@ export async function findIndexedReferences(
           end_column
         FROM reference_captures
         WHERE name = ?
-        ORDER BY file_path ASC, start_row ASC
+        ORDER BY file_path ASC, start_row ASC, start_column ASC
         LIMIT ?
       `,
       [input.name, limit]
@@ -868,7 +868,7 @@ export async function searchSymbols(
           selection_end_column
         FROM symbols
         WHERE ${where.join(' AND ')}
-        ORDER BY name ASC, file_path ASC, start_row ASC
+        ORDER BY file_path ASC, start_row ASC, start_column ASC, name ASC
         LIMIT ?
       `,
       params
