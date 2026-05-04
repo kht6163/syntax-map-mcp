@@ -25,6 +25,7 @@ type IndexedSearchInput =
 export type BuildContextInput = {
   paths?: string[];
   detail: 'compact' | 'full';
+  maxFiles?: number;
   indexedSearch?: IndexedSearchInput;
 };
 
@@ -50,6 +51,7 @@ export async function buildContext(
   if (input.indexedSearch) {
     return buildIndexedSearchContext(workspace, {
       detail: input.detail,
+      maxFiles: input.maxFiles,
       indexedSearch: input.indexedSearch
     });
   }
@@ -79,7 +81,7 @@ async function buildIndexedSearchContext(
   const { detail, indexedSearch } = input;
 
   if (indexedSearch.mode === 'references') {
-    return buildIndexedReferenceContext(workspace, { detail, indexedSearch });
+    return buildIndexedReferenceContext(workspace, { detail, maxFiles: input.maxFiles, indexedSearch });
   }
 
   const search = await searchSymbols(workspace, {
@@ -88,7 +90,7 @@ async function buildIndexedSearchContext(
   });
   if (!search.ok) return search;
 
-  const paths = [...new Set(search.symbols.map(symbol => symbol.path))];
+  const paths = limitPaths([...new Set(search.symbols.map(symbol => symbol.path))], input.maxFiles);
   const summaries: FileSummary[] = [];
 
   for (const filePath of paths) {
@@ -113,7 +115,7 @@ async function buildIndexedSearchContext(
 
 async function buildIndexedReferenceContext(
   workspace: Workspace,
-  input: Pick<BuildContextInput, 'detail'> & {
+  input: Pick<BuildContextInput, 'detail' | 'maxFiles'> & {
     indexedSearch: Extract<NonNullable<BuildContextInput['indexedSearch']>, { mode: 'references' }>;
   }
 ): Promise<BuildContextResult> {
@@ -123,7 +125,10 @@ async function buildIndexedReferenceContext(
   });
   if (!search.ok) return search;
 
-  const paths = [...new Set(search.references.map(reference => reference.path))];
+  const paths = limitPaths(
+    [...new Set(search.references.map(reference => reference.path))],
+    input.maxFiles
+  );
   const summaries: FileSummary[] = [];
 
   for (const filePath of paths) {
@@ -154,6 +159,11 @@ function renderMarkdown(
   return ['# Code Context', intro, ...summaries.map(summary => renderFile(summary, detail))]
     .filter(Boolean)
     .join('\n\n');
+}
+
+function limitPaths(paths: string[], maxFiles: number | undefined): string[] {
+  if (maxFiles === undefined) return paths;
+  return paths.slice(0, maxFiles);
 }
 
 function renderIndexedSearchResults(

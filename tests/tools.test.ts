@@ -273,6 +273,21 @@ describe('createToolHandlers', () => {
         'sample.ts:8'
       );
 
+      const limitedContextResult = await handlers.buildContext({
+        detail: 'compact',
+        maxFiles: 1,
+        indexedSearch: {
+          query: '',
+          kinds: ['class']
+        }
+      });
+      expect((limitedContextResult.structuredContent as { markdown: string }).markdown).toContain(
+        '## sample.js'
+      );
+      expect((limitedContextResult.structuredContent as { markdown: string }).markdown).not.toContain(
+        '## sample.py'
+      );
+
       const referenceContextResult = await handlers.buildContext({
         detail: 'compact',
         indexedSearch: {

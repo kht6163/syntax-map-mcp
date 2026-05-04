@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { cp, mkdtemp, rm } from 'node:fs/promises';
+import { cp, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { describe, expect, it } from 'vitest';
 import { buildContext } from '../src/analysis/context.js';
@@ -130,6 +130,44 @@ describe('buildContext', () => {
         expect(context.markdown).toContain('```typescript');
         expect(context.markdown).toContain('formatUser');
         expect(context.markdown).toContain('## sample.ts');
+      }
+    } finally {
+      await rm(workspaceRoot, { recursive: true, force: true });
+    }
+  });
+
+  it('limits indexed search summaries with maxFiles', async () => {
+    const workspaceRoot = await mkdtemp(path.join(tmpdir(), 'syntax-map-context-max-files-'));
+
+    try {
+      await writeFile(
+        path.join(workspaceRoot, 'a.ts'),
+        ['export class AlphaThing {}', 'new AlphaThing();'].join('\n')
+      );
+      await writeFile(
+        path.join(workspaceRoot, 'b.ts'),
+        ['export class BetaThing {}', 'new BetaThing();'].join('\n')
+      );
+
+      const workspace = await createWorkspace(workspaceRoot);
+      await indexWorkspace(workspace);
+
+      const context = await buildContext(workspace, {
+        detail: 'compact',
+        maxFiles: 1,
+        indexedSearch: {
+          query: 'Thing',
+          kinds: ['class'],
+          limit: 10
+        }
+      });
+
+      expect(context.ok).toBe(true);
+      if (context.ok) {
+        expect(context.markdown).toContain('a.ts:1');
+        expect(context.markdown).toContain('b.ts:1');
+        expect(context.markdown).toContain('## a.ts');
+        expect(context.markdown).not.toContain('## b.ts');
       }
     } finally {
       await rm(workspaceRoot, { recursive: true, force: true });

@@ -141,6 +141,7 @@ syntax-map-mcp의 주요 MCP 도구 입력과 응답 예시입니다. 응답 예
 ```json
 {
   "detail": "compact",
+  "maxFiles": 3,
   "indexedSearch": {
     "query": "UserService",
     "kinds": ["class"],
@@ -156,6 +157,7 @@ syntax-map-mcp의 주요 MCP 도구 입력과 응답 예시입니다. 응답 예
 ```json
 {
   "detail": "compact",
+  "maxFiles": 3,
   "indexedSearch": {
     "mode": "references",
     "name": "formatUser",

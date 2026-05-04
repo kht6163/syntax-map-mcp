@@ -94,6 +94,7 @@ export function createToolHandlers(workspace: Workspace) {
     async buildContext(input: {
       paths?: string[];
       detail: 'compact' | 'full';
+      maxFiles?: number;
       indexedSearch?:
         | {
             mode?: 'symbols';
@@ -254,6 +255,7 @@ export function registerTools(server: McpServer, workspace: Workspace): void {
       inputSchema: {
         paths: z.array(z.string()).optional(),
         detail: detailSchema,
+        maxFiles: z.number().int().positive().max(100).optional(),
         indexedSearch: z
           .union([
             z.object({
