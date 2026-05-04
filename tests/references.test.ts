@@ -11,17 +11,36 @@ const numericRangeShape = expect.objectContaining({
 });
 
 describe('findReferences', () => {
-  it('finds identifier references by name across files', async () => {
+  it('finds TypeScript identifier references by name', async () => {
     const workspace = await createWorkspace(fixtureRoot);
     const references = await findReferences(workspace, {
       name: 'formatUser',
-      paths: ['sample.ts', 'sample.js']
+      paths: ['sample.ts']
     });
 
     expect(references.ok).toBe(true);
     if (references.ok) {
       expect(references.references.length).toBeGreaterThanOrEqual(2);
       expect(references.references.every(reference => reference.name === 'formatUser')).toBe(true);
+    }
+  });
+
+  it('finds JavaScript identifier references by name', async () => {
+    const workspace = await createWorkspace(fixtureRoot);
+    const references = await findReferences(workspace, {
+      name: 'makeReporter',
+      paths: ['sample.js']
+    });
+
+    expect(references.ok).toBe(true);
+    if (references.ok) {
+      expect(references.references).toContainEqual(
+        expect.objectContaining({
+          path: 'sample.js',
+          name: 'makeReporter',
+          snippet: expect.stringContaining('makeReporter')
+        })
+      );
     }
   });
 
