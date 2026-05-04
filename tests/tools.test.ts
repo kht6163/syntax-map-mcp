@@ -1,4 +1,6 @@
 import path from 'node:path';
+import { cp, mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import { describe, expect, it } from 'vitest';
 import { createToolHandlers, registerTools } from '../src/tools.js';
 import { createWorkspace } from '../src/workspace.js';
@@ -135,6 +137,60 @@ describe('createToolHandlers', () => {
       }
     });
   });
+
+  it('indexes the workspace and searches symbols from SQLite', async () => {
+    const workspaceRoot = await mkdtemp(path.join(tmpdir(), 'syntax-map-mcp-'));
+    await cp(fixtureRoot, workspaceRoot, { recursive: true });
+
+    try {
+      const handlers = createToolHandlers(await createWorkspace(workspaceRoot));
+
+      const indexResult = await handlers.indexWorkspace({});
+      expect(indexResult.structuredContent).toEqual(
+        expect.objectContaining({
+          ok: true,
+          indexedFiles: expect.any(Number),
+          symbols: expect.any(Number),
+          indexPath: expect.stringContaining('.syntax-map-mcp/index.sqlite')
+        })
+      );
+
+      const searchResult = await handlers.searchSymbols({ query: 'UserService' });
+      expect(searchResult.structuredContent).toEqual(
+        expect.objectContaining({
+          ok: true,
+          total: 1,
+          symbols: [
+            expect.objectContaining({
+              path: 'sample.ts',
+              name: 'UserService',
+              kind: 'class'
+            })
+          ]
+        })
+      );
+
+      const statusResult = await handlers.getIndexStatus({});
+      expect(statusResult.structuredContent).toEqual(
+        expect.objectContaining({
+          ok: true,
+          indexedFiles: expect.any(Number),
+          symbols: expect.any(Number),
+          staleFiles: 0
+        })
+      );
+
+      const clearResult = await handlers.clearIndex({});
+      expect(clearResult.structuredContent).toEqual(
+        expect.objectContaining({
+          ok: true,
+          cleared: true
+        })
+      );
+    } finally {
+      await rm(workspaceRoot, { recursive: true, force: true });
+    }
+  });
 });
 
 describe('registerTools', () => {
@@ -154,7 +210,11 @@ describe('registerTools', () => {
       'find_references',
       'summarize_file',
       'run_query',
-      'build_context'
+      'build_context',
+      'index_workspace',
+      'search_symbols',
+      'get_index_status',
+      'clear_index'
     ]);
   });
 });

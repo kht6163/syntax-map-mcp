@@ -23,7 +23,8 @@ export type ToolErrorCode =
   | 'FILE_NOT_FOUND'
   | 'UNSUPPORTED_EXTENSION'
   | 'QUERY_ERROR'
-  | 'PARSE_ERROR';
+  | 'PARSE_ERROR'
+  | 'INDEX_ERROR';
 
 export type ToolFailure = {
   ok: false;

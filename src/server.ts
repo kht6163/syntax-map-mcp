@@ -10,7 +10,7 @@ export type ServerOptions = {
 export async function createServer(options: ServerOptions): Promise<McpServer> {
   const workspace = await createWorkspace(options.workspaceRoot);
   const server = new McpServer(
-    { name: 'tree-sitter-code-analysis', version: '0.1.0' },
+    { name: 'syntax-map-mcp', version: '0.1.0' },
     {
       instructions:
         'Analyze JavaScript, TypeScript, and Python source files under the configured workspaceRoot only.'

@@ -3,6 +3,12 @@ import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { z } from 'zod';
 import { buildContext as buildContextAnalysis } from './analysis/context.js';
 import { findDefinitions } from './analysis/definitions.js';
+import {
+  clearIndex as clearWorkspaceIndex,
+  getIndexStatus as getWorkspaceIndexStatus,
+  indexWorkspace as indexWorkspaceAnalysis,
+  searchSymbols as searchIndexedSymbols
+} from './analysis/index.js';
 import { runTreeSitterQuery } from './analysis/query.js';
 import { findReferences as findReferencesAnalysis } from './analysis/references.js';
 import { summarizeFile as summarizeFileAnalysis } from './analysis/summary.js';
@@ -89,6 +95,34 @@ export function createToolHandlers(workspace: Workspace) {
       const result = await buildContextAnalysis(workspace, input);
       if (!result.ok) return toolFailure(result.error.code, result.error.message);
       return jsonResult(result);
+    },
+
+    async indexWorkspace(_input: Record<string, never>): Promise<CallToolResult> {
+      const result = await indexWorkspaceAnalysis(workspace);
+      if (!result.ok) return toolFailure(result.error.code, result.error.message);
+      return jsonResult(result);
+    },
+
+    async searchSymbols(input: {
+      query: string;
+      kinds?: CodeSymbol['kind'][];
+      limit?: number;
+    }): Promise<CallToolResult> {
+      const result = await searchIndexedSymbols(workspace, input);
+      if (!result.ok) return toolFailure(result.error.code, result.error.message);
+      return jsonResult(result);
+    },
+
+    async getIndexStatus(_input: Record<string, never>): Promise<CallToolResult> {
+      const result = await getWorkspaceIndexStatus(workspace);
+      if (!result.ok) return toolFailure(result.error.code, result.error.message);
+      return jsonResult(result);
+    },
+
+    async clearIndex(_input: Record<string, never>): Promise<CallToolResult> {
+      const result = await clearWorkspaceIndex(workspace);
+      if (!result.ok) return toolFailure(result.error.code, result.error.message);
+      return jsonResult(result);
     }
   };
 }
@@ -171,5 +205,49 @@ export function registerTools(server: McpServer, workspace: Workspace): void {
       }
     },
     handlers.buildContext
+  );
+
+  server.registerTool(
+    'index_workspace',
+    {
+      title: 'Index workspace',
+      description: 'Build or refresh the SQLite symbol index for all supported source files.',
+      inputSchema: {}
+    },
+    handlers.indexWorkspace
+  );
+
+  server.registerTool(
+    'search_symbols',
+    {
+      title: 'Search indexed symbols',
+      description: 'Search symbols from the SQLite workspace index.',
+      inputSchema: {
+        query: z.string(),
+        kinds: z.array(symbolKindSchema).optional(),
+        limit: z.number().int().positive().max(500).optional()
+      }
+    },
+    handlers.searchSymbols
+  );
+
+  server.registerTool(
+    'get_index_status',
+    {
+      title: 'Get index status',
+      description: 'Return SQLite index path, indexed file count, symbol count, and stale file count.',
+      inputSchema: {}
+    },
+    handlers.getIndexStatus
+  );
+
+  server.registerTool(
+    'clear_index',
+    {
+      title: 'Clear index',
+      description: 'Delete the SQLite workspace index file.',
+      inputSchema: {}
+    },
+    handlers.clearIndex
   );
 }
