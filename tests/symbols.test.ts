@@ -113,8 +113,7 @@ describe('listSymbols', () => {
       )
     );
 
-    expect(symbolLabels(symbols)).toContain('class:BaseService');
-    expect(symbolLabels(symbols)).toContain('method:run');
+    expect(symbolLabels(symbols)).toEqual(['class:BaseService', 'method:run']);
     expect(symbols.find(symbol => symbol.name === 'run')).toEqual(
       expect.objectContaining({ kind: 'method', parentName: 'BaseService' })
     );
@@ -132,11 +131,28 @@ describe('listSymbols', () => {
       )
     );
 
-    expect(symbolLabels(symbols)).toContain('class:Factory');
-    expect(symbolLabels(symbols)).toContain('method:make');
+    expect(symbolLabels(symbols)).toEqual(['class:Factory', 'method:make']);
     expect(symbols.find(symbol => symbol.name === 'make')).toEqual(
       expect.objectContaining({ kind: 'method', parentName: 'Factory' })
     );
+  });
+
+  it('excludes TypeScript object literal methods from class method symbols', () => {
+    const symbols = listSymbols(
+      parseInline(
+        'object-methods.ts',
+        `class C {
+  m() {
+    const helper = { run() { return 1; } };
+    return helper.run();
+  }
+}
+const obj = { top() { return 2; } };
+`
+      )
+    );
+
+    expect(symbolLabels(symbols)).toEqual(['class:C', 'method:m', 'variable:obj']);
   });
 
   it('excludes local TypeScript variables', () => {

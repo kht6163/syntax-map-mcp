@@ -57,6 +57,13 @@ function querySymbols(parsed: ParsedSourceFile, pattern: SymbolPattern): CodeSym
     const definition = match.captures.find(capture => capture.name === 'definition')?.node ?? name;
     if (!name || !definition) return [];
     if (pattern.kind === 'variable' && !isTopLevelVariableDefinition(definition)) return [];
+    if (
+      pattern.kind === 'method' &&
+      isJavaScriptLikeLanguage(parsed) &&
+      !directJavaScriptLikeMethodClass(definition)
+    ) {
+      return [];
+    }
     if (pattern.kind === 'method' && name.text === 'constructor') return [];
 
     const kind = symbolKind(parsed, pattern.kind, definition);
@@ -95,9 +102,17 @@ function parentNameForSymbol(
   const classNode =
     parsed.language === 'python'
       ? directPythonMethodClass(definition)
-      : findAncestor(definition, ['class_declaration', 'abstract_class_declaration']);
+      : directJavaScriptLikeMethodClass(definition);
 
   return classNode?.childForFieldName('name')?.text;
+}
+
+function isJavaScriptLikeLanguage(parsed: ParsedSourceFile): boolean {
+  return (
+    parsed.language === 'javascript' ||
+    parsed.language === 'typescript' ||
+    parsed.language === 'tsx'
+  );
 }
 
 function isTopLevelVariableDefinition(definition: Parser.SyntaxNode): boolean {
@@ -127,15 +142,20 @@ function directPythonMethodClass(definition: Parser.SyntaxNode): Parser.SyntaxNo
   return classNode;
 }
 
-function findAncestor(node: Parser.SyntaxNode, types: string[]): Parser.SyntaxNode | undefined {
-  let current = node.parent;
+function directJavaScriptLikeMethodClass(
+  definition: Parser.SyntaxNode
+): Parser.SyntaxNode | undefined {
+  const classBody = definition.parent;
+  const classNode = classBody?.parent;
 
-  while (current) {
-    if (types.includes(current.type)) return current;
-    current = current.parent;
+  if (
+    classBody?.type !== 'class_body' ||
+    (classNode?.type !== 'class_declaration' && classNode?.type !== 'abstract_class_declaration')
+  ) {
+    return undefined;
   }
 
-  return undefined;
+  return classNode;
 }
 
 function rangeForNode(node: Parser.SyntaxNode): SourceRange {
