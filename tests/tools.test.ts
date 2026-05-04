@@ -258,6 +258,14 @@ describe('createToolHandlers', () => {
       expect(indexedContextResult.structuredContent).toEqual(
         expect.objectContaining({
           ok: true,
+          metadata: {
+            indexedSearchMode: 'symbols',
+            indexPath: expect.any(String),
+            isStale: false,
+            staleFiles: 0,
+            refreshed: false,
+            total: expect.any(Number)
+          },
           markdown: expect.stringContaining('## Indexed Search Results')
         })
       );
@@ -277,6 +285,14 @@ describe('createToolHandlers', () => {
       expect(referenceContextResult.structuredContent).toEqual(
         expect.objectContaining({
           ok: true,
+          metadata: {
+            indexedSearchMode: 'references',
+            indexPath: expect.any(String),
+            isStale: false,
+            staleFiles: 0,
+            refreshed: false,
+            total: expect.any(Number)
+          },
           markdown: expect.stringContaining('### formatUser')
         })
       );

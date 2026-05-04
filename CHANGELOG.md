@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- `build_context`의 인덱스 검색 응답에 `metadata`를 추가해 stale 상태와 refresh 여부를 확인할 수 있게 했습니다.
 - `build_context.indexedSearch`가 symbols 모드와 references 모드를 모두 지원하도록 확장했습니다.
 - README의 도구별 입력/응답 예시를 `docs/tools.md`로 분리했습니다.
 - npm 패키지에 `docs/tools.md`를 포함해 README의 도구 레퍼런스 링크가 패키지 안에서도 유지되도록 했습니다.

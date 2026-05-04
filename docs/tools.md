@@ -171,6 +171,14 @@ syntax-map-mcp의 주요 MCP 도구 입력과 응답 예시입니다. 응답 예
 ```json
 {
   "ok": true,
+  "metadata": {
+    "indexedSearchMode": "symbols",
+    "indexPath": "/workspace/.syntax-map-mcp/index.sqlite",
+    "isStale": false,
+    "staleFiles": 0,
+    "refreshed": true,
+    "total": 1
+  },
   "markdown": "# Code Context\n\n## Indexed Search Results\n\n### UserService\n\nsrc/users.ts:8\n\n```typescript\nexport class UserService {\n```"
 }
 ```

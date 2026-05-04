@@ -68,6 +68,18 @@ describe('buildContext', () => {
 
       expect(context.ok).toBe(true);
       if (context.ok) {
+        expect(context).toEqual(
+          expect.objectContaining({
+            metadata: {
+              indexedSearchMode: 'symbols',
+              indexPath: expect.any(String),
+              isStale: false,
+              staleFiles: 0,
+              refreshed: false,
+              total: expect.any(Number)
+            }
+          })
+        );
         expect(context.markdown).toContain('## Indexed Search Results');
         expect(context.markdown).toContain('### UserService');
         expect(context.markdown).toContain('sample.ts:8');
@@ -100,6 +112,18 @@ describe('buildContext', () => {
 
       expect(context.ok).toBe(true);
       if (context.ok) {
+        expect(context).toEqual(
+          expect.objectContaining({
+            metadata: {
+              indexedSearchMode: 'references',
+              indexPath: expect.any(String),
+              isStale: false,
+              staleFiles: 0,
+              refreshed: false,
+              total: expect.any(Number)
+            }
+          })
+        );
         expect(context.markdown).toContain('## Indexed Search Results');
         expect(context.markdown).toContain('### formatUser');
         expect(context.markdown).toContain('sample.ts:');

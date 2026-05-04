@@ -32,6 +32,14 @@ export type BuildContextResult =
   | {
       ok: true;
       markdown: string;
+      metadata?: {
+        indexedSearchMode: 'symbols' | 'references';
+        indexPath: string;
+        isStale: boolean;
+        staleFiles: number;
+        refreshed: boolean;
+        total: number;
+      };
     }
   | ToolFailure;
 
@@ -91,7 +99,15 @@ async function buildIndexedSearchContext(
 
   return {
     ok: true,
-    markdown: renderMarkdown(summaries, detail, renderIndexedSearchResults(search.symbols))
+    markdown: renderMarkdown(summaries, detail, renderIndexedSearchResults(search.symbols)),
+    metadata: {
+      indexedSearchMode: 'symbols',
+      indexPath: search.indexPath,
+      isStale: search.isStale,
+      staleFiles: search.staleFiles,
+      refreshed: search.refreshed,
+      total: search.total
+    }
   };
 }
 
@@ -118,7 +134,15 @@ async function buildIndexedReferenceContext(
 
   return {
     ok: true,
-    markdown: renderMarkdown(summaries, input.detail, renderIndexedSearchResults(search.references))
+    markdown: renderMarkdown(summaries, input.detail, renderIndexedSearchResults(search.references)),
+    metadata: {
+      indexedSearchMode: 'references',
+      indexPath: search.indexPath,
+      isStale: search.isStale,
+      staleFiles: search.staleFiles,
+      refreshed: search.refreshed,
+      total: search.total
+    }
   };
 }
 
