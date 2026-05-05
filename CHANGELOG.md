@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.1.5 - 2026-05-06
+
 - `express-rate-limit` transitive 의존성을 override해 npm audit 취약점 경고를 제거했습니다.
 - `index_workspace`가 `workspaceRoot`의 `.gitignore` 패턴에 매칭되는 소스 파일을 인덱싱 대상에서 제외하도록 했습니다.
 
