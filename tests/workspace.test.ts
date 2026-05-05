@@ -134,4 +134,22 @@ describe('workspace', () => {
     expect(files[2]).toMatchObject({ ok: false, error: { code: 'FILE_NOT_FOUND' } });
     expect(files[3]).toMatchObject({ ok: true, relativePath: 'second.py' });
   });
+
+  it('excludes listed source files using root gitignore patterns', async () => {
+    const root = await mkdtemp(path.join(tmpdir(), 'ts-mcp-root-'));
+    await mkdir(path.join(root, 'src'));
+    await mkdir(path.join(root, 'generated'));
+    await writeFile(path.join(root, '.gitignore'), ['generated/*.ts', '!generated/keep.ts'].join('\n'));
+    await writeFile(path.join(root, 'src', 'app.ts'), 'export const app = true;');
+    await writeFile(path.join(root, 'generated', 'ignored.ts'), 'export const ignored = true;');
+    await writeFile(path.join(root, 'generated', 'keep.ts'), 'export const keep = true;');
+
+    const workspace = await createWorkspace(root);
+    const files = await workspace.listSourceFiles();
+
+    expect(files.map(file => file.relativePath)).toEqual(['generated/keep.ts', 'src/app.ts']);
+
+    const explicitRead = await workspace.readSourceFile('generated/ignored.ts');
+    expect(explicitRead).toMatchObject({ ok: true, relativePath: 'generated/ignored.ts' });
+  });
 });

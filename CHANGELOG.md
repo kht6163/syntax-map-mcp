@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- `index_workspace`가 `workspaceRoot`의 `.gitignore` 패턴에 매칭되는 소스 파일을 인덱싱 대상에서 제외하도록 했습니다.
+
 ## 0.1.4 - 2026-05-04
 
 - `build_context` 인덱스 검색 metadata에 `summarizedFiles`와 `omittedFiles`를 추가했습니다.

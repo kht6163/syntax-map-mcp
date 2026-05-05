@@ -1,5 +1,6 @@
 import { readdir, readFile, realpath, stat } from 'node:fs/promises';
 import path from 'node:path';
+import ignore from 'ignore';
 import type { ToolErrorCode } from './types.js';
 
 export type SourceFile = {
@@ -45,8 +46,25 @@ function failure(code: ToolErrorCode, message: string): WorkspaceFailure {
   return { ok: false, error: { code, message } };
 }
 
+async function loadGitignore(root: string): Promise<ReturnType<typeof ignore>> {
+  const matcher = ignore();
+
+  try {
+    matcher.add(await readFile(path.join(root, '.gitignore'), 'utf8'));
+  } catch {
+    // A workspace without .gitignore indexes all supported source files.
+  }
+
+  return matcher;
+}
+
+function toGitignorePath(relativePath: string): string {
+  return relativePath.split(path.sep).join('/');
+}
+
 export async function createWorkspace(workspaceRoot: string): Promise<Workspace> {
   const root = await realpath(path.resolve(workspaceRoot));
+  const gitignore = await loadGitignore(root);
 
   async function readSourceFile(inputPath: string): Promise<SourceFile | WorkspaceFailure> {
     const resolved = path.resolve(root, inputPath);
@@ -105,7 +123,13 @@ export async function createWorkspace(workspaceRoot: string): Promise<Workspace>
         continue;
       }
 
-      if (!entry.isFile() || !SUPPORTED_EXTENSIONS.has(path.extname(entry.name))) {
+      const relativeEntryPath = path.relative(root, absolutePath);
+
+      if (
+        !entry.isFile() ||
+        !SUPPORTED_EXTENSIONS.has(path.extname(entry.name)) ||
+        gitignore.ignores(toGitignorePath(relativeEntryPath))
+      ) {
         continue;
       }
 
