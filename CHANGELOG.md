@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- MCP 서버 metadata의 version이 `package.json` 버전과 동기화되도록 했습니다.
+
 ## 0.1.6 - 2026-05-06
 
 - 하위 디렉터리의 `.gitignore` 패턴도 인덱싱 대상 파일 제외에 반영하도록 했습니다.
