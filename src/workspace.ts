@@ -37,6 +37,11 @@ export type Workspace = {
 const SUPPORTED_EXTENSIONS = new Set(['.js', '.jsx', '.ts', '.tsx', '.py']);
 const EXCLUDED_DIRECTORIES = new Set(['.git', '.syntax-map-mcp', 'dist', 'node_modules']);
 
+type GitignoreMatcher = {
+  baseDirectory: string;
+  matcher: ReturnType<typeof ignore>;
+};
+
 function isInsideRoot(root: string, candidate: string): boolean {
   const relative = path.relative(root, candidate);
   return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative));
@@ -46,25 +51,45 @@ function failure(code: ToolErrorCode, message: string): WorkspaceFailure {
   return { ok: false, error: { code, message } };
 }
 
-async function loadGitignore(root: string): Promise<ReturnType<typeof ignore>> {
+async function loadGitignore(directory: string): Promise<GitignoreMatcher | undefined> {
   const matcher = ignore();
 
   try {
-    matcher.add(await readFile(path.join(root, '.gitignore'), 'utf8'));
+    matcher.add(await readFile(path.join(directory, '.gitignore'), 'utf8'));
   } catch {
-    // A workspace without .gitignore indexes all supported source files.
+    return undefined;
   }
 
-  return matcher;
+  return { baseDirectory: directory, matcher };
 }
 
 function toGitignorePath(relativePath: string): string {
   return relativePath.split(path.sep).join('/');
 }
 
+function isGitignored(absolutePath: string, matchers: GitignoreMatcher[]): boolean {
+  let ignored = false;
+
+  for (const { baseDirectory, matcher } of matchers) {
+    const relativePath = path.relative(baseDirectory, absolutePath);
+    if (relativePath === '' || relativePath.startsWith('..') || path.isAbsolute(relativePath)) {
+      continue;
+    }
+
+    const result = matcher.test(toGitignorePath(relativePath));
+    if (result.ignored) {
+      ignored = true;
+    }
+    if (result.unignored) {
+      ignored = false;
+    }
+  }
+
+  return ignored;
+}
+
 export async function createWorkspace(workspaceRoot: string): Promise<Workspace> {
   const root = await realpath(path.resolve(workspaceRoot));
-  const gitignore = await loadGitignore(root);
 
   async function readSourceFile(inputPath: string): Promise<SourceFile | WorkspaceFailure> {
     const resolved = path.resolve(root, inputPath);
@@ -109,7 +134,12 @@ export async function createWorkspace(workspaceRoot: string): Promise<Workspace>
     };
   }
 
-  async function listSourceFilesInDirectory(directory: string): Promise<WorkspaceFileInfo[]> {
+  async function listSourceFilesInDirectory(
+    directory: string,
+    parentMatchers: GitignoreMatcher[]
+  ): Promise<WorkspaceFileInfo[]> {
+    const gitignore = await loadGitignore(directory);
+    const matchers = gitignore ? [...parentMatchers, gitignore] : parentMatchers;
     const entries = await readdir(directory, { withFileTypes: true });
     const files: WorkspaceFileInfo[] = [];
 
@@ -118,17 +148,15 @@ export async function createWorkspace(workspaceRoot: string): Promise<Workspace>
 
       if (entry.isDirectory()) {
         if (!EXCLUDED_DIRECTORIES.has(entry.name)) {
-          files.push(...(await listSourceFilesInDirectory(absolutePath)));
+          files.push(...(await listSourceFilesInDirectory(absolutePath, matchers)));
         }
         continue;
       }
 
-      const relativeEntryPath = path.relative(root, absolutePath);
-
       if (
         !entry.isFile() ||
         !SUPPORTED_EXTENSIONS.has(path.extname(entry.name)) ||
-        gitignore.ignores(toGitignorePath(relativeEntryPath))
+        isGitignored(absolutePath, matchers)
       ) {
         continue;
       }
@@ -167,7 +195,7 @@ export async function createWorkspace(workspaceRoot: string): Promise<Workspace>
       return Promise.all(inputPaths.map(readSourceFile));
     },
     listSourceFiles() {
-      return listSourceFilesInDirectory(root);
+      return listSourceFilesInDirectory(root, []);
     }
   };
 }

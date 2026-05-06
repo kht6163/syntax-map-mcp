@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- 하위 디렉터리의 `.gitignore` 패턴도 인덱싱 대상 파일 제외에 반영하도록 했습니다.
+
 ## 0.1.5 - 2026-05-06
 
 - `express-rate-limit` transitive 의존성을 override해 npm audit 취약점 경고를 제거했습니다.

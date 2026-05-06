@@ -152,4 +152,30 @@ describe('workspace', () => {
     const explicitRead = await workspace.readSourceFile('generated/ignored.ts');
     expect(explicitRead).toMatchObject({ ok: true, relativePath: 'generated/ignored.ts' });
   });
+
+  it('applies nested gitignore patterns relative to their directory', async () => {
+    const root = await mkdtemp(path.join(tmpdir(), 'ts-mcp-root-'));
+    const packageRoot = path.join(root, 'packages', 'app');
+    await mkdir(path.join(packageRoot, 'generated'), { recursive: true });
+    await writeFile(path.join(root, 'root.ts'), 'export const root = true;');
+    await writeFile(path.join(packageRoot, '.gitignore'), ['generated/*.ts', '!generated/keep.ts'].join('\n'));
+    await writeFile(path.join(packageRoot, 'index.ts'), 'export const app = true;');
+    await writeFile(path.join(packageRoot, 'generated', 'ignored.ts'), 'export const ignored = true;');
+    await writeFile(path.join(packageRoot, 'generated', 'keep.ts'), 'export const keep = true;');
+
+    const workspace = await createWorkspace(root);
+    const files = await workspace.listSourceFiles();
+
+    expect(files.map(file => file.relativePath)).toEqual([
+      'packages/app/generated/keep.ts',
+      'packages/app/index.ts',
+      'root.ts'
+    ]);
+
+    const explicitRead = await workspace.readSourceFile('packages/app/generated/ignored.ts');
+    expect(explicitRead).toMatchObject({
+      ok: true,
+      relativePath: 'packages/app/generated/ignored.ts'
+    });
+  });
 });
