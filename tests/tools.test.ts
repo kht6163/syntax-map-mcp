@@ -546,6 +546,105 @@ describe('createToolHandlers', () => {
     }
   });
 
+  it('returns stable response shapes for indexed status and search tools', async () => {
+    const workspaceRoot = await mkdtemp(path.join(tmpdir(), 'syntax-map-mcp-response-shape-'));
+    await cp(fixtureRoot, workspaceRoot, { recursive: true });
+
+    try {
+      const handlers = createToolHandlers(await createWorkspace(workspaceRoot));
+      await handlers.indexWorkspace({});
+
+      const status = await handlers.getIndexStatus({});
+      expect(Object.keys(status.structuredContent as object).sort()).toEqual([
+        'indexPath',
+        'indexedFiles',
+        'ok',
+        'references',
+        'schemaVersion',
+        'staleFiles',
+        'staleReasons',
+        'symbols'
+      ]);
+
+      const symbolSearch = await handlers.searchSymbols({ query: 'UserService' });
+      expect(Object.keys(symbolSearch.structuredContent as object).sort()).toEqual([
+        'indexPath',
+        'isStale',
+        'ok',
+        'refreshed',
+        'staleFiles',
+        'symbols',
+        'total'
+      ]);
+      expect(symbolSearch.structuredContent).toEqual(
+        expect.objectContaining({
+          symbols: [
+            expect.objectContaining({
+              path: 'sample.ts',
+              language: 'typescript',
+              name: 'UserService',
+              kind: 'class',
+              range: expect.any(Object),
+              snippet: 'export class UserService {'
+            })
+          ]
+        })
+      );
+
+      const definitionSearch = await handlers.findIndexedDefinition({ name: 'UserService' });
+      expect(Object.keys(definitionSearch.structuredContent as object).sort()).toEqual([
+        'definitions',
+        'indexPath',
+        'isStale',
+        'ok',
+        'refreshed',
+        'staleFiles',
+        'total'
+      ]);
+      expect(definitionSearch.structuredContent).toEqual(
+        expect.objectContaining({
+          definitions: [
+            expect.objectContaining({
+              path: 'sample.ts',
+              language: 'typescript',
+              name: 'UserService',
+              kind: 'class',
+              range: expect.any(Object),
+              snippet: 'export class UserService {'
+            })
+          ]
+        })
+      );
+
+      const referenceSearch = await handlers.findIndexedReferences({ name: 'formatUser' });
+      expect(Object.keys(referenceSearch.structuredContent as object).sort()).toEqual([
+        'indexPath',
+        'isStale',
+        'ok',
+        'references',
+        'refreshed',
+        'staleFiles',
+        'total'
+      ]);
+      expect(referenceSearch.structuredContent).toEqual(
+        expect.objectContaining({
+          references: expect.arrayContaining([
+            expect.objectContaining({
+              path: 'sample.ts',
+              language: 'typescript',
+              name: 'formatUser',
+              nodeType: expect.any(String),
+              range: expect.any(Object),
+              snippet: expect.stringContaining('formatUser')
+            })
+          ])
+        })
+      );
+    } finally {
+      await rm(workspaceRoot, { recursive: true, force: true });
+    }
+  });
+
   it('rebuilds indexes that do not store the current schema version', async () => {
     const workspaceRoot = await mkdtemp(path.join(tmpdir(), 'syntax-map-mcp-legacy-index-'));
     await cp(fixtureRoot, workspaceRoot, { recursive: true });

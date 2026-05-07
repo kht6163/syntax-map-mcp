@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- 주요 인덱스 도구의 `structuredContent` 응답 shape를 검증하는 테스트를 추가했습니다.
 - `get_index_status` 응답에 stale 파일별 이유(`changed`, `missing`)를 반환하는 `staleReasons`를 추가했습니다.
 - SQLite 인덱스 DB에 schema version metadata를 저장하고, 호환되지 않는 기존 인덱스는 자동 재생성하도록 했습니다.
 
