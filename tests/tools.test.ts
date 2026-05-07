@@ -73,6 +73,26 @@ async function createHandlers() {
   return createToolHandlers(await createWorkspace(fixtureRoot));
 }
 
+function expectToolFailure(
+  result: { isError?: boolean; structuredContent?: unknown; content?: unknown },
+  code: string
+) {
+  expect(result.isError).toBe(true);
+  expect(result.structuredContent).toEqual({
+    ok: false,
+    error: {
+      code,
+      message: expect.any(String)
+    }
+  });
+  expect(result.content).toEqual([
+    {
+      type: 'text',
+      text: JSON.stringify(result.structuredContent, null, 2)
+    }
+  ]);
+}
+
 describe('createToolHandlers', () => {
   it('lists symbols for a TypeScript file', async () => {
     const handlers = await createHandlers();
@@ -99,14 +119,7 @@ describe('createToolHandlers', () => {
 
     const result = await handlers.runQuery({ path: 'sample.ts', query: '(' });
 
-    expect(result.isError).toBe(true);
-    expect(result.structuredContent).toEqual({
-      ok: false,
-      error: {
-        code: 'QUERY_ERROR',
-        message: expect.any(String)
-      }
-    });
+    expectToolFailure(result, 'QUERY_ERROR');
   });
 
   it('finds definitions', async () => {
@@ -190,14 +203,7 @@ describe('createToolHandlers', () => {
 
     const result = await handlers.summarizeFile({ path: '../outside.ts' });
 
-    expect(result.isError).toBe(true);
-    expect(result.structuredContent).toEqual({
-      ok: false,
-      error: {
-        code: 'WORKSPACE_OUTSIDE_ROOT',
-        message: expect.any(String)
-      }
-    });
+    expectToolFailure(result, 'WORKSPACE_OUTSIDE_ROOT');
   });
 
   it('indexes the workspace and searches symbols from SQLite', async () => {
@@ -640,6 +646,27 @@ describe('createToolHandlers', () => {
           ])
         })
       );
+    } finally {
+      await rm(workspaceRoot, { recursive: true, force: true });
+    }
+  });
+
+  it('returns stable tool failure shapes for index write errors', async () => {
+    const workspaceRoot = await mkdtemp(path.join(tmpdir(), 'syntax-map-mcp-index-error-shape-'));
+    await cp(fixtureRoot, workspaceRoot, { recursive: true });
+
+    try {
+      await writeFile(path.join(workspaceRoot, '.syntax-map-mcp'), 'not a directory\n');
+      const handlers = createToolHandlers(await createWorkspace(workspaceRoot));
+
+      const indexResult = await handlers.indexWorkspace({});
+      expectToolFailure(indexResult, 'INDEX_ERROR');
+
+      const searchResult = await handlers.searchSymbols({
+        query: 'UserService',
+        refreshIfStale: true
+      });
+      expectToolFailure(searchResult, 'INDEX_ERROR');
     } finally {
       await rm(workspaceRoot, { recursive: true, force: true });
     }
