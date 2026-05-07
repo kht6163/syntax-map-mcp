@@ -92,6 +92,7 @@ type IndexStatusResult =
       symbols: number;
       references: number;
       staleFiles: number;
+      staleReasons: StaleReason[];
     }
   | ToolFailure;
 
@@ -108,6 +109,11 @@ type StoredFile = {
   size: number;
   mtimeMs: number;
   parseStatus: string;
+};
+
+type StaleReason = {
+  path: string;
+  reason: 'changed' | 'missing';
 };
 
 type IndexReadState = {
@@ -302,25 +308,35 @@ function isCurrent(stored: StoredFile | undefined, current: WorkspaceFileInfo): 
   );
 }
 
-async function countStaleFiles(workspace: Workspace, database: Database): Promise<number> {
+async function collectStaleReasons(workspace: Workspace, database: Database): Promise<StaleReason[]> {
   const storedFiles = selectStoredFiles(database);
   const currentFiles = await workspace.listSourceFiles();
   const currentPaths = new Set(currentFiles.map(file => file.relativePath));
-  let staleFiles = 0;
+  const staleReasons: StaleReason[] = [];
 
   for (const file of currentFiles) {
     if (!isCurrent(storedFiles.get(file.relativePath), file)) {
-      staleFiles += 1;
+      staleReasons.push({
+        path: file.relativePath,
+        reason: 'changed'
+      });
     }
   }
 
   for (const storedPath of storedFiles.keys()) {
     if (!currentPaths.has(storedPath)) {
-      staleFiles += 1;
+      staleReasons.push({
+        path: storedPath,
+        reason: 'missing'
+      });
     }
   }
 
-  return staleFiles;
+  return staleReasons.sort((left, right) => left.path.localeCompare(right.path));
+}
+
+async function countStaleFiles(workspace: Workspace, database: Database): Promise<number> {
+  return (await collectStaleReasons(workspace, database)).length;
 }
 
 async function openIndexForRead(
@@ -1027,7 +1043,7 @@ export async function getIndexStatus(workspace: Workspace): Promise<IndexStatusR
   try {
     initSchema(database);
 
-    const staleFiles = await countStaleFiles(workspace, database);
+    const staleReasons = await collectStaleReasons(workspace, database);
 
     return {
       ok: true,
@@ -1036,7 +1052,8 @@ export async function getIndexStatus(workspace: Workspace): Promise<IndexStatusR
       indexedFiles: scalarCount(database, 'SELECT COUNT(*) FROM files WHERE parse_status = "ok"'),
       symbols: scalarCount(database, 'SELECT COUNT(*) FROM symbols'),
       references: scalarCount(database, 'SELECT COUNT(*) FROM reference_captures'),
-      staleFiles
+      staleFiles: staleReasons.length,
+      staleReasons
     };
   } catch (error) {
     return failure(error instanceof Error ? error.message : String(error));

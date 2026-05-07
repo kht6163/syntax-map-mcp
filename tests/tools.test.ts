@@ -512,6 +512,40 @@ describe('createToolHandlers', () => {
     }
   });
 
+  it('reports stale reasons for changed and missing indexed files', async () => {
+    const workspaceRoot = await mkdtemp(path.join(tmpdir(), 'syntax-map-mcp-stale-reasons-'));
+    await cp(fixtureRoot, workspaceRoot, { recursive: true });
+
+    try {
+      const handlers = createToolHandlers(await createWorkspace(workspaceRoot));
+      await handlers.indexWorkspace({});
+
+      await writeFile(path.join(workspaceRoot, 'sample.ts'), 'export const changed = true;\n');
+      await rm(path.join(workspaceRoot, 'sample.py'), { force: true });
+
+      const status = await handlers.getIndexStatus({});
+
+      expect(status.structuredContent).toEqual(
+        expect.objectContaining({
+          ok: true,
+          staleFiles: 2,
+          staleReasons: expect.arrayContaining([
+            {
+              path: 'sample.py',
+              reason: 'missing'
+            },
+            {
+              path: 'sample.ts',
+              reason: 'changed'
+            }
+          ])
+        })
+      );
+    } finally {
+      await rm(workspaceRoot, { recursive: true, force: true });
+    }
+  });
+
   it('rebuilds indexes that do not store the current schema version', async () => {
     const workspaceRoot = await mkdtemp(path.join(tmpdir(), 'syntax-map-mcp-legacy-index-'));
     await cp(fixtureRoot, workspaceRoot, { recursive: true });

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- `get_index_status` 응답에 stale 파일별 이유(`changed`, `missing`)를 반환하는 `staleReasons`를 추가했습니다.
 - SQLite 인덱스 DB에 schema version metadata를 저장하고, 호환되지 않는 기존 인덱스는 자동 재생성하도록 했습니다.
 
 ## 0.1.8 - 2026-05-07

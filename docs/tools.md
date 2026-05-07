@@ -336,7 +336,17 @@ syntax-map-mcp의 주요 MCP 도구 입력과 응답 예시입니다. 응답 예
   "indexedFiles": 12,
   "symbols": 84,
   "references": 231,
-  "staleFiles": 0
+  "staleFiles": 2,
+  "staleReasons": [
+    {
+      "path": "src/users.ts",
+      "reason": "changed"
+    },
+    {
+      "path": "src/old.ts",
+      "reason": "missing"
+    }
+  ]
 }
 ```
 
