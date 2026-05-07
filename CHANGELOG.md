@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 1.2.0 - 2026-05-07
+
 - `lsp_diagnostics` 도구를 추가해 tree-sitter parse error 기반의 가벼운 문법 진단을 LSP Diagnostic 형태로 반환하도록 했습니다.
 - diagnostics 분석 계층에 provider 인터페이스를 추가해 이후 언어별 LSP 서버 진단 결과를 결합할 수 있게 했습니다.
 
