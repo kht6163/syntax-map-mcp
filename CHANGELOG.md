@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 1.2.1 - 2026-05-07
+
 - 큰 TypeScript 파일이 workspace 기본 `paths` 조회에 포함될 때 LSP definition, references, hover, workspace symbols, completion, signature help가 `Invalid argument`로 실패하던 문제를 수정했습니다.
 - `lsp_signature_help`가 TypeScript 제네릭 함수의 파라미터를 추출하지 못하던 문제를 수정했습니다.
 - `get_index_status`가 기본 응답에서 `staleReasons` 전체 배열을 생략하고, `includeStaleReasons: true`일 때만 상세 사유를 반환하도록 변경했습니다.
