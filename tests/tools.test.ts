@@ -672,6 +672,45 @@ describe('createToolHandlers', () => {
     }
   });
 
+  it('rejects invalid indexed search options in handlers', async () => {
+    const workspaceRoot = await mkdtemp(path.join(tmpdir(), 'syntax-map-mcp-invalid-index-options-'));
+    await cp(fixtureRoot, workspaceRoot, { recursive: true });
+
+    try {
+      const handlers = createToolHandlers(await createWorkspace(workspaceRoot));
+      await handlers.indexWorkspace({});
+
+      const invalidLimit = await handlers.searchSymbols({
+        query: 'UserService',
+        limit: 0
+      });
+      expectToolFailure(invalidLimit, 'INDEX_ERROR');
+
+      const invalidContextBefore = await handlers.findIndexedDefinition({
+        name: 'UserService',
+        contextBefore: 11
+      });
+      expectToolFailure(invalidContextBefore, 'INDEX_ERROR');
+
+      const invalidContextAfter = await handlers.findIndexedReferences({
+        name: 'formatUser',
+        contextAfter: -1
+      });
+      expectToolFailure(invalidContextAfter, 'INDEX_ERROR');
+
+      const invalidIndexedContext = await handlers.buildContext({
+        detail: 'compact',
+        indexedSearch: {
+          query: 'UserService',
+          limit: 501
+        }
+      });
+      expectToolFailure(invalidIndexedContext, 'INDEX_ERROR');
+    } finally {
+      await rm(workspaceRoot, { recursive: true, force: true });
+    }
+  });
+
   it('rebuilds indexes that do not store the current schema version', async () => {
     const workspaceRoot = await mkdtemp(path.join(tmpdir(), 'syntax-map-mcp-legacy-index-'));
     await cp(fixtureRoot, workspaceRoot, { recursive: true });

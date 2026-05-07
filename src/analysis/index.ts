@@ -138,6 +138,9 @@ type SnippetContext = {
 const INDEX_DIRECTORY = '.syntax-map-mcp';
 const INDEX_FILE = 'index.sqlite';
 const INDEX_SCHEMA_VERSION = 1;
+const DEFAULT_SEARCH_LIMIT = 50;
+const MAX_SEARCH_LIMIT = 500;
+const MAX_CONTEXT_LINES = 10;
 
 function indexPathForWorkspace(workspace: Workspace): string {
   return path.join(workspace.root, INDEX_DIRECTORY, INDEX_FILE);
@@ -519,6 +522,19 @@ function rowValue(row: Record<string, SqlValue>, key: string): SqlValue {
   return row[key];
 }
 
+function assertIntegerRange(name: string, value: number | undefined, min: number, max: number): void {
+  if (value === undefined) return;
+  if (!Number.isInteger(value) || value < min || value > max) {
+    throw new Error(`${name} must be an integer between ${min} and ${max}`);
+  }
+}
+
+function validateSearchOptions(input: { limit?: number } & ContextOptions): void {
+  assertIntegerRange('limit', input.limit, 1, MAX_SEARCH_LIMIT);
+  assertIntegerRange('contextBefore', input.contextBefore, 0, MAX_CONTEXT_LINES);
+  assertIntegerRange('contextAfter', input.contextAfter, 0, MAX_CONTEXT_LINES);
+}
+
 function snippetDetails(
   path: string,
   language: SupportedLanguage,
@@ -690,6 +706,7 @@ export async function findIndexedDefinitions(
   let readState: IndexReadState | undefined;
 
   try {
+    validateSearchOptions(input);
     readState = await openIndexForRead(workspace, input);
     const { database } = readState;
 
@@ -701,7 +718,7 @@ export async function findIndexedDefinitions(
       params.push(...input.kinds);
     }
 
-    const limit = input.limit ?? 50;
+    const limit = input.limit ?? DEFAULT_SEARCH_LIMIT;
     params.push(limit);
 
     const statement = database.prepare(
@@ -821,9 +838,10 @@ export async function findIndexedReferences(
   let readState: IndexReadState | undefined;
 
   try {
+    validateSearchOptions(input);
     readState = await openIndexForRead(workspace, input);
     const { database } = readState;
-    const limit = input.limit ?? 50;
+    const limit = input.limit ?? DEFAULT_SEARCH_LIMIT;
     const statement = database.prepare(
       `
         SELECT
@@ -916,6 +934,7 @@ export async function searchSymbols(
   let readState: IndexReadState | undefined;
 
   try {
+    validateSearchOptions(input);
     readState = await openIndexForRead(workspace, input);
     const { database } = readState;
 
@@ -927,7 +946,7 @@ export async function searchSymbols(
       params.push(...input.kinds);
     }
 
-    const limit = input.limit ?? 50;
+    const limit = input.limit ?? DEFAULT_SEARCH_LIMIT;
     params.push(limit);
 
     const statement = database.prepare(

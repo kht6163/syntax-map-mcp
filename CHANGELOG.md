@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- 인덱스 검색 옵션의 `limit`, `contextBefore`, `contextAfter` 범위를 분석 계층에서도 검증하도록 했습니다.
 - 인덱스 저장 실패 시 tool failure 응답 shape를 검증하는 테스트를 추가했습니다.
 - 주요 인덱스 도구의 `structuredContent` 응답 shape를 검증하는 테스트를 추가했습니다.
 - `get_index_status` 응답에 stale 파일별 이유(`changed`, `missing`)를 반환하는 `staleReasons`를 추가했습니다.
