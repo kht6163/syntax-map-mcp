@@ -181,6 +181,40 @@ syntax-map-mcp의 주요 MCP 도구 입력과 응답 예시입니다. 응답 예
 }
 ```
 
+## lsp_document_symbols
+
+입력:
+
+```json
+{
+  "path": "src/users.ts"
+}
+```
+
+응답 일부:
+
+```json
+{
+  "ok": true,
+  "path": "src/users.ts",
+  "language": "typescript",
+  "symbols": [
+    {
+      "name": "UserService",
+      "kind": 5,
+      "range": {
+        "start": { "line": 7, "character": 7 },
+        "end": { "line": 13, "character": 1 }
+      },
+      "selectionRange": {
+        "start": { "line": 7, "character": 13 },
+        "end": { "line": 7, "character": 24 }
+      }
+    }
+  ]
+}
+```
+
 ## build_context
 
 파일 경로 기반 입력:

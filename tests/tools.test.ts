@@ -142,6 +142,33 @@ describe('createToolHandlers', () => {
     );
   });
 
+  it('returns LSP document symbols for a source file', async () => {
+    const handlers = await createHandlers();
+
+    const result = await handlers.lspDocumentSymbols({ path: 'sample.ts' });
+
+    expect(result.structuredContent).toEqual(
+      expect.objectContaining({
+        ok: true,
+        path: 'sample.ts',
+        language: 'typescript',
+        symbols: expect.arrayContaining([
+          expect.objectContaining({
+            name: 'UserService',
+            kind: 5,
+            range: expect.objectContaining({
+              start: { line: 7, character: 7 }
+            }),
+            selectionRange: {
+              start: { line: 7, character: 13 },
+              end: { line: 7, character: 24 }
+            }
+          })
+        ])
+      })
+    );
+  });
+
   it('returns a tool failure for invalid queries', async () => {
     const handlers = await createHandlers();
 
@@ -866,6 +893,7 @@ describe('registerTools', () => {
       'summarize_file',
       'run_query',
       'get_ast_tree',
+      'lsp_document_symbols',
       'build_context',
       'index_workspace',
       'search_symbols',

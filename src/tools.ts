@@ -14,6 +14,7 @@ import {
 } from './analysis/index.js';
 import { runTreeSitterQuery } from './analysis/query.js';
 import { findReferences as findReferencesAnalysis } from './analysis/references.js';
+import { getDocumentSymbols as getLspDocumentSymbols } from './analysis/lsp.js';
 import { summarizeFile as summarizeFileAnalysis } from './analysis/summary.js';
 import { listSymbols as listParsedSymbols } from './analysis/symbols.js';
 import { parseSourceFile } from './parser.js';
@@ -99,6 +100,12 @@ export function createToolHandlers(workspace: Workspace) {
       includeText?: boolean;
     }): Promise<CallToolResult> {
       const result = await getAstTreeAnalysis(workspace, input);
+      if (!result.ok) return toolFailure(result.error.code, result.error.message);
+      return jsonResult(result);
+    },
+
+    async lspDocumentSymbols(input: ListSymbolsInput): Promise<CallToolResult> {
+      const result = await getLspDocumentSymbols(workspace, input);
       if (!result.ok) return toolFailure(result.error.code, result.error.message);
       return jsonResult(result);
     },
@@ -271,6 +278,18 @@ export function registerTools(server: McpServer, workspace: Workspace): void {
       }
     },
     handlers.getAstTree
+  );
+
+  server.registerTool(
+    'lsp_document_symbols',
+    {
+      title: 'LSP document symbols',
+      description: 'Return tree-sitter symbols converted to LSP DocumentSymbol ranges and kinds.',
+      inputSchema: {
+        path: z.string()
+      }
+    },
+    handlers.lspDocumentSymbols
   );
 
   server.registerTool(
