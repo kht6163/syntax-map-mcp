@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- `lsp_references` 도구를 추가해 LSP 위치의 식별자 참조 위치를 반환하도록 했습니다.
+
 ## 0.4.0 - 2026-05-07
 
 - `lsp_definition` 도구를 추가해 LSP 위치의 식별자 정의 위치를 반환하도록 했습니다.

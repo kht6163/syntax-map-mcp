@@ -14,6 +14,7 @@ const publicToolNames = [
   'get_ast_tree',
   'lsp_document_symbols',
   'lsp_definition',
+  'lsp_references',
   'build_context',
   'index_workspace',
   'search_symbols',
@@ -61,6 +62,10 @@ describe('MCP tool schema', () => {
       },
       lsp_document_symbols: { properties: ['path'], required: ['path'] },
       lsp_definition: {
+        properties: ['path', 'line', 'character', 'paths'],
+        required: ['path', 'line', 'character']
+      },
+      lsp_references: {
         properties: ['path', 'line', 'character', 'paths'],
         required: ['path', 'line', 'character']
       },

@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { getDefinition, getDocumentSymbols } from '../src/analysis/lsp.js';
+import { getDefinition, getDocumentSymbols, getReferences } from '../src/analysis/lsp.js';
 import { createWorkspace } from '../src/workspace.js';
 
 const fixtureRoot = path.join(process.cwd(), 'tests', 'fixtures');
@@ -76,5 +76,33 @@ describe('getDocumentSymbols', () => {
         }
       ]
     });
+  });
+
+  it('returns LSP reference locations for the identifier at a source position', async () => {
+    const workspace = await createWorkspace(fixtureRoot);
+
+    const result = await getReferences(workspace, {
+      path: 'sample.ts',
+      line: 21,
+      character: 2
+    });
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        ok: true,
+        path: 'sample.ts',
+        language: 'typescript',
+        name: 'formatUser',
+        locations: expect.arrayContaining([
+          {
+            path: 'sample.ts',
+            range: {
+              start: { line: 21, character: 0 },
+              end: { line: 21, character: 10 }
+            }
+          }
+        ])
+      })
+    );
   });
 });

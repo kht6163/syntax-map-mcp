@@ -2,6 +2,7 @@ import { parseSourceFile } from '../parser.js';
 import type { CodeSymbol, SourceRange, SupportedLanguage, ToolFailure } from '../types.js';
 import type { Workspace } from '../workspace.js';
 import { findDefinitions } from './definitions.js';
+import { findReferences } from './references.js';
 import { listSymbols } from './symbols.js';
 
 type LspPosition = {
@@ -47,6 +48,18 @@ export type LspLocation = {
 };
 
 export type LspDefinitionResult =
+  | {
+      ok: true;
+      path: string;
+      language: SupportedLanguage;
+      name: string;
+      locations: LspLocation[];
+    }
+  | ToolFailure;
+
+export type LspReferencesInput = LspDefinitionInput;
+
+export type LspReferencesResult =
   | {
       ok: true;
       path: string;
@@ -166,6 +179,39 @@ export async function getDefinition(
       locations: definitions.definitions.map(definition => ({
         path: definition.path,
         range: lspRange(definition.range)
+      }))
+    };
+  } catch (error) {
+    return failure(error instanceof Error ? error.message : String(error));
+  }
+}
+
+export async function getReferences(
+  workspace: Workspace,
+  input: LspReferencesInput
+): Promise<LspReferencesResult> {
+  try {
+    validatePosition(input.line, input.character);
+
+    const file = await workspace.readSourceFile(input.path);
+    if (!file.ok) return file;
+
+    const parsed = parseSourceFile(file);
+    if (!parsed.ok) return parsed;
+
+    const name = identifierAt(file.text, input.line, input.character);
+    const paths = input.paths ?? (await workspace.listSourceFiles()).map(sourceFile => sourceFile.relativePath);
+    const references = name === '' ? { ok: true as const, references: [] } : await findReferences(workspace, { name, paths });
+    if (!references.ok) return references;
+
+    return {
+      ok: true,
+      path: file.relativePath,
+      language: parsed.language,
+      name,
+      locations: references.references.map(reference => ({
+        path: reference.path,
+        range: lspRange(reference.range)
       }))
     };
   } catch (error) {
