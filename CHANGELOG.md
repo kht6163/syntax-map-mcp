@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.7.0 - 2026-05-07
+
 - `lsp_workspace_symbols` 도구를 추가해 workspace 심볼 검색 결과를 LSP 형태로 반환하도록 했습니다.
 
 ## 0.6.0 - 2026-05-07
