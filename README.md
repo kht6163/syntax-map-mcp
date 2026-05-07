@@ -52,11 +52,13 @@ npx -y syntax-map-mcp --workspace-root /path/to/workspace
 - `get_index_status`: 인덱스 경로, 인덱싱된 파일 수, 심볼 수, 참조 수, stale 파일 수 반환
 - `clear_index`: SQLite 인덱스 파일 삭제
 
+`lsp_definition`, `lsp_references`, `lsp_hover`, `lsp_workspace_symbols`, `lsp_completion`, `lsp_signature_help`의 `paths` 입력은 선택 사항입니다. 생략하면 `workspaceRoot` 아래의 지원 소스 파일 전체를 대상으로 조회합니다.
+
 ## SQLite 인덱스
 
 `index_workspace`는 `workspaceRoot` 아래의 `.syntax-map-mcp/index.sqlite`에 인덱스를 저장합니다. 인덱싱 대상은 `.js`, `.jsx`, `.ts`, `.tsx`, `.py`, `.rs` 파일이며, `.git`, `.syntax-map-mcp`, `dist`, `node_modules` 디렉터리와 `workspaceRoot` 아래의 `.gitignore` 패턴에 매칭되는 파일은 제외합니다. 하위 디렉터리의 `.gitignore`는 해당 디렉터리 기준으로 적용합니다.
 
-파일 변경 여부는 `mtimeMs`와 `size`로 판단합니다. 다시 `index_workspace`를 호출하면 변경된 파일만 재파싱하고, 삭제된 파일은 인덱스에서 제거합니다. MCP 서버를 실행하면 지원 소스 파일 변경을 감지하는 watcher가 함께 시작되어 SQLite 인덱스를 자동 갱신합니다. `.syntax-map-mcp`, `.git`, `dist`, `node_modules`와 지원하지 않는 확장자 변경은 watcher refresh 대상에서 제외합니다. `search_symbols`, `find_indexed_definition`, `find_indexed_references`는 `isStale`, `staleFiles`, `refreshed`를 반환해 검색 결과가 최신 인덱스 기반인지 알려줍니다. 세 도구에 `refreshIfStale: true`를 전달하면 stale 파일이 있을 때 먼저 인덱스를 갱신한 뒤 검색합니다. 인덱스 검색 도구는 인덱스에 저장된 위치를 조회한 뒤 현재 파일에서 해당 줄 snippet을 읽어 반환합니다. `contextBefore`, `contextAfter`를 0-10 사이 정수로 전달하면 snippet 주변 라인도 함께 반환합니다. `includePreview: true`를 전달하면 `path:line` 헤더와 코드블록으로 구성된 `previewMarkdown`도 함께 반환합니다.
+파일 변경 여부는 `mtimeMs`와 `size`로 판단합니다. 다시 `index_workspace`를 호출하면 변경된 파일만 재파싱하고, 삭제된 파일은 인덱스에서 제거합니다. MCP 서버를 실행하면 지원 소스 파일 변경을 감지하는 watcher가 함께 시작되어 SQLite 인덱스를 자동 갱신합니다. `.syntax-map-mcp`, `.git`, `dist`, `node_modules`와 지원하지 않는 확장자 변경은 watcher refresh 대상에서 제외합니다. `get_index_status`는 기본적으로 stale 파일 개수만 반환하고, 상세 목록이 필요하면 `includeStaleReasons: true`를 전달합니다. `search_symbols`, `find_indexed_definition`, `find_indexed_references`는 `isStale`, `staleFiles`, `refreshed`를 반환해 검색 결과가 최신 인덱스 기반인지 알려줍니다. 세 도구에 `refreshIfStale: true`를 전달하면 stale 파일이 있을 때 먼저 인덱스를 갱신한 뒤 검색합니다. 인덱스 검색 도구는 인덱스에 저장된 위치를 조회한 뒤 현재 파일에서 해당 줄 snippet을 읽어 반환합니다. `contextBefore`, `contextAfter`를 0-10 사이 정수로 전달하면 snippet 주변 라인도 함께 반환합니다. `includePreview: true`를 전달하면 `path:line` 헤더와 코드블록으로 구성된 `previewMarkdown`도 함께 반환합니다.
 
 `summarize_file`은 `sources` 필드로 `symbols`, `imports`, `exports`가 어떤 방식으로 추출되었는지 반환합니다.
 

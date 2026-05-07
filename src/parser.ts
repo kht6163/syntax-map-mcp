@@ -35,6 +35,7 @@ export type LanguageDetectionResult =
 	    };
 
 type LanguageResolver = (language: SupportedLanguage) => unknown;
+const PARSE_CHUNK_SIZE = 4096;
 
 export function detectLanguage(filePath: string): LanguageDetectionResult {
   const extension = path.extname(filePath);
@@ -72,7 +73,7 @@ export function parseSourceFile(
   try {
     const parser = new Parser();
     parser.setLanguage(resolveLanguage(detected.language));
-    const tree = parser.parse(file.text);
+    const tree = parser.parse(offset => file.text.slice(offset, offset + PARSE_CHUNK_SIZE));
 
     return {
       ok: true,

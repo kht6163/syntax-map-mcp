@@ -293,10 +293,10 @@ function splitParameters(parameters: string): string[] {
 function signatureFromSnippet(name: string, snippet: string): LspSignatureInformation {
   const firstLine = snippet.split(/\r?\n/)[0].trim();
   const functionMatch = firstLine.match(
-    /^(?:export\s+)?(?:async\s+)?function\s+[A-Za-z_$][A-Za-z0-9_$]*\s*\(([^)]*)\)\s*([^{:]*(?::\s*[^{]+)?)[{:]?/
+    /^(?:export\s+)?(?:async\s+)?function\s+[A-Za-z_$][A-Za-z0-9_$]*\s*(?:<[^>]+>)?\s*\(([^)]*)\)\s*([^{:]*(?::\s*[^{]+)?)[{:]?/
   );
   const methodMatch = firstLine.match(
-    /^(?:public\s+|private\s+|protected\s+|static\s+|async\s+)*[A-Za-z_$][A-Za-z0-9_$]*\s*\(([^)]*)\)\s*([^{:]*(?::\s*[^{]+)?)[{:]?/
+    /^(?:public\s+|private\s+|protected\s+|static\s+|async\s+)*[A-Za-z_$][A-Za-z0-9_$]*\s*(?:<[^>]+>)?\s*\(([^)]*)\)\s*([^{:]*(?::\s*[^{]+)?)[{:]?/
   );
   const pythonMatch = firstLine.match(/^def\s+[A-Za-z_$][A-Za-z0-9_$]*\s*\(([^)]*)\)\s*([^:]*)/);
   const rustMatch = firstLine.match(

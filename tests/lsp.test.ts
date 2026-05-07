@@ -608,6 +608,65 @@ describe('getDocumentSymbols', () => {
     );
   });
 
+  it('uses workspace paths by default even when the workspace has a large source file', async () => {
+    const root = await mkdtemp(path.join(tmpdir(), 'syntax-map-lsp-default-paths-'));
+
+    try {
+      const declarations = Array.from({ length: 1200 }, (_, index) => `export const filler${index} = ${index};`);
+      await writeFile(path.join(root, 'large.ts'), `${declarations.join('\n')}\n`);
+      await writeFile(
+        path.join(root, 'target.ts'),
+        [
+          'export function deepClone<T>(obj: T): T { return obj; }',
+          'const value = deepClone({ id: 1 });',
+          'dee'
+        ].join('\n')
+      );
+      const workspace = await createWorkspace(root);
+
+      await expect(
+        getDefinition(workspace, {
+          path: 'target.ts',
+          line: 1,
+          character: 15
+        })
+      ).resolves.toEqual(expect.objectContaining({ ok: true, name: 'deepClone' }));
+      await expect(
+        getReferences(workspace, {
+          path: 'target.ts',
+          line: 1,
+          character: 15
+        })
+      ).resolves.toEqual(expect.objectContaining({ ok: true, name: 'deepClone' }));
+      await expect(
+        getHover(workspace, {
+          path: 'target.ts',
+          line: 1,
+          character: 15
+        })
+      ).resolves.toEqual(expect.objectContaining({ ok: true, name: 'deepClone' }));
+      await expect(getWorkspaceSymbols(workspace, { query: 'deep' })).resolves.toEqual(
+        expect.objectContaining({ ok: true, symbols: [expect.objectContaining({ name: 'deepClone' })] })
+      );
+      await expect(
+        getCompletion(workspace, {
+          path: 'target.ts',
+          line: 2,
+          character: 3
+        })
+      ).resolves.toEqual(expect.objectContaining({ ok: true, items: [expect.objectContaining({ label: 'deepClone' })] }));
+      await expect(
+        getSignatureHelp(workspace, {
+          path: 'target.ts',
+          line: 1,
+          character: 25
+        })
+      ).resolves.toEqual(expect.objectContaining({ ok: true, name: 'deepClone' }));
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
   it('deduplicates LSP completion items by symbol kind and label', async () => {
     const root = await mkdtemp(path.join(tmpdir(), 'syntax-map-lsp-completion-dedupe-'));
 
@@ -719,6 +778,41 @@ describe('getDocumentSymbols', () => {
         }
       ]
     });
+  });
+
+  it('returns LSP signature help parameters for TypeScript generic functions', async () => {
+    const root = await mkdtemp(path.join(tmpdir(), 'syntax-map-lsp-signature-generic-'));
+
+    try {
+      await writeFile(
+        path.join(root, 'generic.ts'),
+        ['export function deepClone<T>(obj: T): T { return obj; }', 'deepClone({ id: 1 });'].join('\n')
+      );
+      const workspace = await createWorkspace(root);
+
+      const result = await getSignatureHelp(workspace, {
+        path: 'generic.ts',
+        line: 1,
+        character: 10
+      });
+
+      expect(result).toEqual({
+        ok: true,
+        path: 'generic.ts',
+        language: 'typescript',
+        name: 'deepClone',
+        activeSignature: 0,
+        activeParameter: 0,
+        signatures: [
+          {
+            label: 'deepClone(obj: T): T',
+            parameters: [{ label: 'obj: T' }]
+          }
+        ]
+      });
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
   });
 
   it('returns Rust LSP signature help for a function call position', async () => {

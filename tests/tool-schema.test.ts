@@ -121,7 +121,7 @@ describe('MCP tool schema', () => {
         properties: ['name', 'limit', 'refreshIfStale', 'contextBefore', 'contextAfter', 'includePreview'],
         required: ['name']
       },
-      get_index_status: { properties: [] },
+      get_index_status: { properties: ['includeStaleReasons'] },
       clear_index: { properties: [] }
     };
 

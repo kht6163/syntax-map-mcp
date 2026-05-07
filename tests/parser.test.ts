@@ -1,4 +1,6 @@
 import path from 'node:path';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import { describe, expect, it } from 'vitest';
 import { detectLanguage, parseSourceFile } from '../src/parser.js';
 import { createWorkspace } from '../src/workspace.js';
@@ -44,6 +46,32 @@ describe('parser', () => {
     if (parsed.ok) {
       expect(parsed.language).toBe(expectedLanguage);
       expect(parsed.tree.rootNode.type).toBe(expectedRoot);
+    }
+  });
+
+  it('parses TypeScript files larger than the native string parse limit', async () => {
+    const root = await mkdtemp(path.join(tmpdir(), 'syntax-map-parser-large-'));
+
+    try {
+      const declarations = Array.from({ length: 1200 }, (_, index) => `export const value${index} = ${index};`);
+      await writeFile(path.join(root, 'large.ts'), `${declarations.join('\n')}\n`);
+      const workspace = await createWorkspace(root);
+      const file = await workspace.readSourceFile('large.ts');
+      expect(file.ok).toBe(true);
+      if (!file.ok) return;
+
+      expect(file.text.length).toBeGreaterThan(32768);
+
+      const parsed = parseSourceFile(file);
+
+      expect(parsed).toEqual(
+        expect.objectContaining({
+          ok: true,
+          language: 'typescript'
+        })
+      );
+    } finally {
+      await rm(root, { recursive: true, force: true });
     }
   });
 

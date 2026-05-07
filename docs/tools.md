@@ -504,7 +504,9 @@ syntax-map-mcp의 주요 MCP 도구 입력과 응답 예시입니다. 응답 예
 입력:
 
 ```json
-{}
+{
+  "includeStaleReasons": true
+}
 ```
 
 응답 일부:
@@ -646,6 +648,8 @@ syntax-map-mcp의 주요 MCP 도구 입력과 응답 예시입니다. 응답 예
   ]
 }
 ```
+
+`includeStaleReasons`를 생략하거나 `false`로 전달하면 응답에는 `staleFiles` 개수만 포함됩니다.
 
 ## clear_index
 

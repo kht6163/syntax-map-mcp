@@ -92,9 +92,13 @@ type IndexStatusResult =
       symbols: number;
       references: number;
       staleFiles: number;
-      staleReasons: StaleReason[];
+      staleReasons?: StaleReason[];
     }
   | ToolFailure;
+
+type IndexStatusInput = {
+  includeStaleReasons?: boolean;
+};
 
 type ClearIndexResult =
   | {
@@ -1077,7 +1081,7 @@ export async function searchSymbols(
   }
 }
 
-export async function getIndexStatus(workspace: Workspace): Promise<IndexStatusResult> {
+export async function getIndexStatus(workspace: Workspace, input: IndexStatusInput = {}): Promise<IndexStatusResult> {
   const indexPath = indexPathForWorkspace(workspace);
   const { database } = await openCompatibleDatabase(indexPath);
 
@@ -1086,16 +1090,21 @@ export async function getIndexStatus(workspace: Workspace): Promise<IndexStatusR
 
     const staleReasons = await collectStaleReasons(workspace, database);
 
-    return {
+    const result: Exclude<IndexStatusResult, ToolFailure> = {
       ok: true,
       indexPath,
       schemaVersion: INDEX_SCHEMA_VERSION,
       indexedFiles: scalarCount(database, 'SELECT COUNT(*) FROM files WHERE parse_status = "ok"'),
       symbols: scalarCount(database, 'SELECT COUNT(*) FROM symbols'),
       references: scalarCount(database, 'SELECT COUNT(*) FROM reference_captures'),
-      staleFiles: staleReasons.length,
-      staleReasons
+      staleFiles: staleReasons.length
     };
+
+    if (input.includeStaleReasons === true) {
+      result.staleReasons = staleReasons;
+    }
+
+    return result;
   /* v8 ignore next -- status read failures require a corrupted sqlite runtime path. */
   } catch (error) {
     /* v8 ignore next -- status reads do not write; filesystem failures are covered by clearIndex. */

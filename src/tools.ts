@@ -270,8 +270,8 @@ export function createToolHandlers(workspace: Workspace) {
       return jsonResult(result);
     },
 
-    async getIndexStatus(_input: Record<string, never>): Promise<CallToolResult> {
-      const result = await getWorkspaceIndexStatus(workspace);
+    async getIndexStatus(input: { includeStaleReasons?: boolean }): Promise<CallToolResult> {
+      const result = await getWorkspaceIndexStatus(workspace, input);
       /* v8 ignore next -- getIndexStatus read failures are defensive and covered at index layer. */
       if (!result.ok) return toolFailure(result.error.code, result.error.message);
       return jsonResult(result);
@@ -585,7 +585,9 @@ export function registerTools(server: McpServer, workspace: Workspace): void {
     {
       title: 'Get index status',
       description: 'Return SQLite index path, indexed file count, symbol count, and stale file count.',
-      inputSchema: {}
+      inputSchema: {
+        includeStaleReasons: z.boolean().optional()
+      }
     },
     handlers.getIndexStatus
   );

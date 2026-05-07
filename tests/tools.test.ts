@@ -820,7 +820,7 @@ describe('createToolHandlers', () => {
       await writeFile(path.join(workspaceRoot, 'sample.ts'), 'export const changed = true;\n');
       await rm(path.join(workspaceRoot, 'sample.py'), { force: true });
 
-      const status = await handlers.getIndexStatus({});
+      const status = await handlers.getIndexStatus({ includeStaleReasons: true });
 
       expect(status.structuredContent).toEqual(
         expect.objectContaining({
@@ -843,6 +843,30 @@ describe('createToolHandlers', () => {
     }
   });
 
+  it('omits stale reasons from index status unless requested', async () => {
+    const workspaceRoot = await mkdtemp(path.join(tmpdir(), 'syntax-map-mcp-stale-reasons-default-'));
+    await cp(fixtureRoot, workspaceRoot, { recursive: true });
+
+    try {
+      const handlers = createToolHandlers(await createWorkspace(workspaceRoot));
+      await handlers.indexWorkspace({});
+
+      await writeFile(path.join(workspaceRoot, 'sample.ts'), 'export const changed = true;\n');
+
+      const status = await handlers.getIndexStatus({});
+
+      expect(status.structuredContent).toEqual(
+        expect.objectContaining({
+          ok: true,
+          staleFiles: 1
+        })
+      );
+      expect(status.structuredContent).not.toHaveProperty('staleReasons');
+    } finally {
+      await rm(workspaceRoot, { recursive: true, force: true });
+    }
+  });
+
   it('returns stable response shapes for indexed status and search tools', async () => {
     const workspaceRoot = await mkdtemp(path.join(tmpdir(), 'syntax-map-mcp-response-shape-'));
     await cp(fixtureRoot, workspaceRoot, { recursive: true });
@@ -859,7 +883,6 @@ describe('createToolHandlers', () => {
         'references',
         'schemaVersion',
         'staleFiles',
-        'staleReasons',
         'symbols'
       ]);
 
