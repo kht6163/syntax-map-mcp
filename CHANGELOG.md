@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.3.0 - 2026-05-07
+
 - `lsp_document_symbols` 도구를 추가해 Tree-sitter 심볼을 LSP DocumentSymbol 형태로 반환하도록 했습니다.
 
 ## 0.2.0 - 2026-05-07
