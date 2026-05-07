@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- SQLite 인덱스 DB에 schema version metadata를 저장하고, 호환되지 않는 기존 인덱스는 자동 재생성하도록 했습니다.
+
 ## 0.1.8 - 2026-05-07
 
 - `docs/tools.md`의 도구 목록이 실제 MCP `listTools()` 응답과 일치하는지 검증하도록 했습니다.

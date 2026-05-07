@@ -215,6 +215,7 @@ syntax-map-mcp의 주요 MCP 도구 입력과 응답 예시입니다. 응답 예
 ```json
 {
   "ok": true,
+  "schemaVersion": 1,
   "indexedFiles": 12,
   "symbols": 84,
   "references": 231,
@@ -331,6 +332,7 @@ syntax-map-mcp의 주요 MCP 도구 입력과 응답 예시입니다. 응답 예
 ```json
 {
   "ok": true,
+  "schemaVersion": 1,
   "indexedFiles": 12,
   "symbols": 84,
   "references": 231,

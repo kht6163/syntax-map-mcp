@@ -16,6 +16,7 @@ type IndexResult =
       indexedFiles: number;
       skippedFiles: number;
       removedFiles: number;
+      schemaVersion: number;
       symbols: number;
       references: number;
     }
@@ -86,6 +87,7 @@ type IndexStatusResult =
   | {
       ok: true;
       indexPath: string;
+      schemaVersion: number;
       indexedFiles: number;
       symbols: number;
       references: number;
@@ -129,6 +131,7 @@ type SnippetContext = {
 
 const INDEX_DIRECTORY = '.syntax-map-mcp';
 const INDEX_FILE = 'index.sqlite';
+const INDEX_SCHEMA_VERSION = 1;
 
 function indexPathForWorkspace(workspace: Workspace): string {
   return path.join(workspace.root, INDEX_DIRECTORY, INDEX_FILE);
@@ -144,15 +147,61 @@ function failure(message: string): ToolFailure {
   };
 }
 
-async function openDatabase(indexPath: string): Promise<Database> {
+async function createDatabase(): Promise<Database> {
+  const SQL = await initSqlJs();
+  return new SQL.Database();
+}
+
+async function openDatabase(indexPath: string): Promise<{ database: Database; exists: boolean }> {
   const SQL = await initSqlJs();
 
   try {
     const data = await readFile(indexPath);
-    return new SQL.Database(data);
+    return { database: new SQL.Database(data), exists: true };
   } catch {
-    return new SQL.Database();
+    return { database: new SQL.Database(), exists: false };
   }
+}
+
+function tableExists(database: Database, tableName: string): boolean {
+  const result = database.exec(
+    "SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?",
+    [tableName]
+  )[0];
+  return result !== undefined && result.values.length > 0;
+}
+
+function storedSchemaVersion(database: Database): number | undefined {
+  if (!tableExists(database, 'metadata')) {
+    return undefined;
+  }
+
+  const result = database.exec('SELECT value FROM metadata WHERE key = ?', ['schema_version'])[0];
+  const value = result?.values[0]?.[0];
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+
+  const version = Number(value);
+  return Number.isInteger(version) ? version : undefined;
+}
+
+function hasCurrentSchemaVersion(database: Database): boolean {
+  return storedSchemaVersion(database) === INDEX_SCHEMA_VERSION;
+}
+
+async function openCompatibleDatabase(indexPath: string): Promise<{ database: Database; reset: boolean }> {
+  let { database, exists } = await openDatabase(indexPath);
+  let reset = false;
+
+  if (exists && !hasCurrentSchemaVersion(database)) {
+    database.close();
+    await rm(indexPath, { force: true });
+    database = await createDatabase();
+    reset = true;
+  }
+
+  return { database, reset };
 }
 
 async function saveDatabase(database: Database, indexPath: string): Promise<void> {
@@ -208,7 +257,21 @@ function initSchema(database: Database): void {
     CREATE INDEX IF NOT EXISTS symbols_name_idx ON symbols(name);
     CREATE INDEX IF NOT EXISTS symbols_kind_idx ON symbols(kind);
     CREATE INDEX IF NOT EXISTS reference_captures_name_idx ON reference_captures(name);
+
+    CREATE TABLE IF NOT EXISTS metadata (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL
+    );
   `);
+
+  database.run(
+    `
+      INSERT INTO metadata (key, value)
+      VALUES ('schema_version', ?)
+      ON CONFLICT(key) DO UPDATE SET value = excluded.value
+    `,
+    [String(INDEX_SCHEMA_VERSION)]
+  );
 }
 
 function selectStoredFiles(database: Database): Map<string, StoredFile> {
@@ -265,11 +328,11 @@ async function openIndexForRead(
   input: { refreshIfStale?: boolean }
 ): Promise<IndexReadState> {
   const indexPath = indexPathForWorkspace(workspace);
-  let database = await openDatabase(indexPath);
+  let { database, reset } = await openCompatibleDatabase(indexPath);
   initSchema(database);
 
   const initialStaleFiles = await countStaleFiles(workspace, database);
-  if (!input.refreshIfStale || initialStaleFiles === 0) {
+  if (!reset && (!input.refreshIfStale || initialStaleFiles === 0)) {
     return {
       database,
       indexPath,
@@ -286,7 +349,7 @@ async function openIndexForRead(
     throw new Error(refreshedIndex.error.message);
   }
 
-  database = await openDatabase(indexPath);
+  database = (await openCompatibleDatabase(indexPath)).database;
   initSchema(database);
 
   const staleFiles = await countStaleFiles(workspace, database);
@@ -492,7 +555,7 @@ function previewMarkdown(
 
 export async function indexWorkspace(workspace: Workspace): Promise<IndexResult> {
   const indexPath = indexPathForWorkspace(workspace);
-  const database = await openDatabase(indexPath);
+  const { database } = await openCompatibleDatabase(indexPath);
 
   try {
     initSchema(database);
@@ -588,6 +651,7 @@ export async function indexWorkspace(workspace: Workspace): Promise<IndexResult>
       indexedFiles,
       skippedFiles,
       removedFiles,
+      schemaVersion: INDEX_SCHEMA_VERSION,
       symbols: scalarCount(database, 'SELECT COUNT(*) FROM symbols'),
       references: scalarCount(database, 'SELECT COUNT(*) FROM reference_captures')
     };
@@ -958,7 +1022,7 @@ export async function searchSymbols(
 
 export async function getIndexStatus(workspace: Workspace): Promise<IndexStatusResult> {
   const indexPath = indexPathForWorkspace(workspace);
-  const database = await openDatabase(indexPath);
+  const { database } = await openCompatibleDatabase(indexPath);
 
   try {
     initSchema(database);
@@ -968,6 +1032,7 @@ export async function getIndexStatus(workspace: Workspace): Promise<IndexStatusR
     return {
       ok: true,
       indexPath,
+      schemaVersion: INDEX_SCHEMA_VERSION,
       indexedFiles: scalarCount(database, 'SELECT COUNT(*) FROM files WHERE parse_status = "ok"'),
       symbols: scalarCount(database, 'SELECT COUNT(*) FROM symbols'),
       references: scalarCount(database, 'SELECT COUNT(*) FROM reference_captures'),

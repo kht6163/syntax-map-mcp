@@ -1,11 +1,73 @@
 import path from 'node:path';
-import { cp, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { cp, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
+import initSqlJs from 'sql.js';
 import { describe, expect, it } from 'vitest';
 import { createToolHandlers, registerTools } from '../src/tools.js';
 import { createWorkspace } from '../src/workspace.js';
 
 const fixtureRoot = path.join(process.cwd(), 'tests', 'fixtures');
+
+async function writeLegacyIndexWithoutSchemaVersion(workspaceRoot: string, filePath: string) {
+  const workspace = await createWorkspace(workspaceRoot);
+  const fileInfo = (await workspace.listSourceFiles()).find(file => file.relativePath === filePath);
+  if (!fileInfo) throw new Error(`Fixture file not found: ${filePath}`);
+
+  const SQL = await initSqlJs();
+  const database = new SQL.Database();
+  database.exec(`
+    CREATE TABLE files (
+      path TEXT PRIMARY KEY,
+      language TEXT,
+      size INTEGER NOT NULL,
+      mtime_ms REAL NOT NULL,
+      parse_status TEXT NOT NULL,
+      error_message TEXT,
+      indexed_at TEXT NOT NULL
+    );
+
+    CREATE TABLE symbols (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      file_path TEXT NOT NULL,
+      language TEXT NOT NULL,
+      name TEXT NOT NULL,
+      kind TEXT NOT NULL,
+      parent_name TEXT,
+      start_row INTEGER NOT NULL,
+      start_column INTEGER NOT NULL,
+      end_row INTEGER NOT NULL,
+      end_column INTEGER NOT NULL,
+      selection_start_row INTEGER,
+      selection_start_column INTEGER,
+      selection_end_row INTEGER,
+      selection_end_column INTEGER
+    );
+
+    CREATE TABLE reference_captures (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      file_path TEXT NOT NULL,
+      language TEXT NOT NULL,
+      name TEXT NOT NULL,
+      node_type TEXT NOT NULL,
+      start_row INTEGER NOT NULL,
+      start_column INTEGER NOT NULL,
+      end_row INTEGER NOT NULL,
+      end_column INTEGER NOT NULL
+    );
+  `);
+  database.run(
+    `
+      INSERT INTO files (path, language, size, mtime_ms, parse_status, error_message, indexed_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `,
+    [fileInfo.relativePath, 'typescript', fileInfo.size, fileInfo.mtimeMs, 'ok', null, new Date().toISOString()]
+  );
+
+  const indexPath = path.join(workspaceRoot, '.syntax-map-mcp', 'index.sqlite');
+  await mkdir(path.dirname(indexPath), { recursive: true });
+  await writeFile(indexPath, Buffer.from(database.export()));
+  database.close();
+}
 
 async function createHandlers() {
   return createToolHandlers(await createWorkspace(fixtureRoot));
@@ -149,6 +211,7 @@ describe('createToolHandlers', () => {
       expect(indexResult.structuredContent).toEqual(
         expect.objectContaining({
           ok: true,
+          schemaVersion: 1,
           indexedFiles: expect.any(Number),
           symbols: expect.any(Number),
           references: expect.any(Number),
@@ -321,6 +384,7 @@ describe('createToolHandlers', () => {
         expect.objectContaining({
           ok: true,
           indexedFiles: expect.any(Number),
+          schemaVersion: 1,
           symbols: expect.any(Number),
           references: expect.any(Number),
           staleFiles: 0
@@ -441,6 +505,48 @@ describe('createToolHandlers', () => {
               snippet: expect.stringContaining('renamedTarget')
             })
           ])
+        })
+      );
+    } finally {
+      await rm(workspaceRoot, { recursive: true, force: true });
+    }
+  });
+
+  it('rebuilds indexes that do not store the current schema version', async () => {
+    const workspaceRoot = await mkdtemp(path.join(tmpdir(), 'syntax-map-mcp-legacy-index-'));
+    await cp(fixtureRoot, workspaceRoot, { recursive: true });
+
+    try {
+      await writeLegacyIndexWithoutSchemaVersion(workspaceRoot, 'sample.ts');
+      const handlers = createToolHandlers(await createWorkspace(workspaceRoot));
+
+      const result = await handlers.searchSymbols({
+        query: 'UserService',
+        refreshIfStale: true
+      });
+
+      expect(result.structuredContent).toEqual(
+        expect.objectContaining({
+          ok: true,
+          isStale: false,
+          staleFiles: 0,
+          refreshed: true,
+          symbols: [
+            expect.objectContaining({
+              path: 'sample.ts',
+              name: 'UserService',
+              kind: 'class'
+            })
+          ]
+        })
+      );
+
+      const status = await handlers.getIndexStatus({});
+      expect(status.structuredContent).toEqual(
+        expect.objectContaining({
+          ok: true,
+          schemaVersion: 1,
+          staleFiles: 0
         })
       );
     } finally {
