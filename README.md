@@ -37,6 +37,7 @@ npx -y syntax-map-mcp --workspace-root /path/to/workspace
 - `run_query`: 파일 하나에 tree-sitter query 실행
 - `get_ast_tree`: 파일 하나의 tree-sitter AST를 depth 제한 JSON 트리로 반환
 - `lsp_document_symbols`: 파일 하나의 심볼을 LSP DocumentSymbol 형태로 반환
+- `lsp_diagnostics`: 파일 하나의 tree-sitter parse error를 LSP Diagnostic 형태로 반환
 - `lsp_definition`: 파일의 LSP 위치에 있는 식별자의 정의 위치를 반환
 - `lsp_references`: 파일의 LSP 위치에 있는 식별자의 참조 위치를 반환
 - `lsp_hover`: 파일의 LSP 위치에 있는 식별자의 hover markdown을 반환

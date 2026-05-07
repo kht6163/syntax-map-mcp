@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- `lsp_diagnostics` 도구를 추가해 tree-sitter parse error 기반의 가벼운 문법 진단을 LSP Diagnostic 형태로 반환하도록 했습니다.
+- diagnostics 분석 계층에 provider 인터페이스를 추가해 이후 언어별 LSP 서버 진단 결과를 결합할 수 있게 했습니다.
+
 ## 1.1.0 - 2026-05-07
 
 - Rust `.rs` 파일 파싱을 지원하고, `get_ast_tree`와 LSP document symbols, definition, references, hover, workspace symbols, completion, signature help에서 Rust 심볼을 처리하도록 했습니다.
