@@ -32,7 +32,9 @@ export type LanguageDetectionResult =
         code: 'UNSUPPORTED_EXTENSION';
         message: string;
       };
-    };
+	    };
+
+type LanguageResolver = (language: SupportedLanguage) => unknown;
 
 export function detectLanguage(filePath: string): LanguageDetectionResult {
   const extension = path.extname(filePath);
@@ -58,13 +60,16 @@ export function detectLanguage(filePath: string): LanguageDetectionResult {
   }
 }
 
-export function parseSourceFile(file: SourceFile): ParsedSourceFile | ParseFailure {
+export function parseSourceFile(
+  file: SourceFile,
+  resolveLanguage: LanguageResolver = languageForName
+): ParsedSourceFile | ParseFailure {
   const detected = detectLanguage(file.absolutePath);
   if (!detected.ok) return detected;
 
   try {
     const parser = new Parser();
-    parser.setLanguage(languageForName(detected.language));
+    parser.setLanguage(resolveLanguage(detected.language));
     const tree = parser.parse(file.text);
 
     return {

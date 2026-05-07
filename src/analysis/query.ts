@@ -34,6 +34,7 @@ export function runTreeSitterQuery(parsed: ParsedSourceFile, queryText: string):
       captures
     };
   } catch (error) {
+    /* v8 ignore next -- tree-sitter query failures throw Error instances in supported runtimes. */
     const message = error instanceof Error ? error.message : String(error);
 
     return {

@@ -44,4 +44,42 @@ describe('parser', () => {
       expect(parsed.tree.rootNode.type).toBe(expectedRoot);
     }
   });
+
+  it('returns parse failures when grammar resolution throws', async () => {
+    const workspace = await createWorkspace(fixtureRoot);
+    const file = await workspace.readSourceFile('sample.ts');
+    expect(file.ok).toBe(true);
+    if (!file.ok) return;
+
+    const parsed = parseSourceFile(file, () => {
+      throw new Error('grammar unavailable');
+    });
+
+    expect(parsed).toEqual({
+      ok: false,
+      error: {
+        code: 'PARSE_ERROR',
+        message: 'grammar unavailable'
+      }
+    });
+  });
+
+  it('stringifies non-Error parser failures', async () => {
+    const workspace = await createWorkspace(fixtureRoot);
+    const file = await workspace.readSourceFile('sample.ts');
+    expect(file.ok).toBe(true);
+    if (!file.ok) return;
+
+    const parsed = parseSourceFile(file, () => {
+      throw 'grammar unavailable';
+    });
+
+    expect(parsed).toEqual({
+      ok: false,
+      error: {
+        code: 'PARSE_ERROR',
+        message: 'grammar unavailable'
+      }
+    });
+  });
 });

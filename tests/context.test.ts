@@ -10,6 +10,21 @@ const fixtureRoot = path.join(process.cwd(), 'tests', 'fixtures');
 const sampleLineCount = 22;
 
 describe('buildContext', () => {
+  it('rejects requests without paths or indexed search', async () => {
+    const workspace = await createWorkspace(fixtureRoot);
+    const context = await buildContext(workspace, {
+      detail: 'compact'
+    });
+
+    expect(context).toEqual({
+      ok: false,
+      error: {
+        code: 'INDEX_ERROR',
+        message: 'Either paths or indexedSearch must be provided'
+      }
+    });
+  });
+
   it('builds compact markdown context for files', async () => {
     const workspace = await createWorkspace(fixtureRoot);
     const context = await buildContext(workspace, {
@@ -45,6 +60,28 @@ describe('buildContext', () => {
       expect(context.markdown).toContain('### Exports');
       expect(context.markdown).toContain('- export class FileReporter {');
       expect(context.markdown).toContain('- export function makeReporter() {');
+    }
+  });
+
+  it('renders files with no symbols', async () => {
+    const workspaceRoot = await mkdtemp(path.join(tmpdir(), 'syntax-map-context-empty-'));
+
+    try {
+      await writeFile(path.join(workspaceRoot, 'empty.ts'), '// comment only\n');
+      const workspace = await createWorkspace(workspaceRoot);
+
+      const context = await buildContext(workspace, {
+        paths: ['empty.ts'],
+        detail: 'compact'
+      });
+
+      expect(context.ok).toBe(true);
+      if (context.ok) {
+        expect(context.markdown).toContain('## empty.ts');
+        expect(context.markdown).toContain('- None');
+      }
+    } finally {
+      await rm(workspaceRoot, { recursive: true, force: true });
     }
   });
 
@@ -134,6 +171,37 @@ describe('buildContext', () => {
         expect(context.markdown).toContain('```typescript');
         expect(context.markdown).toContain('formatUser');
         expect(context.markdown).toContain('## sample.ts');
+      }
+    } finally {
+      await rm(workspaceRoot, { recursive: true, force: true });
+    }
+  });
+
+  it('renders empty indexed search results', async () => {
+    const workspaceRoot = await mkdtemp(path.join(tmpdir(), 'syntax-map-context-no-results-'));
+    await cp(fixtureRoot, workspaceRoot, { recursive: true });
+
+    try {
+      const workspace = await createWorkspace(workspaceRoot);
+      await indexWorkspace(workspace);
+
+      const context = await buildContext(workspace, {
+        detail: 'compact',
+        indexedSearch: {
+          query: 'NoSuchSymbol'
+        }
+      });
+
+      expect(context.ok).toBe(true);
+      if (context.ok) {
+        expect(context.markdown).toContain('## Indexed Search Results');
+        expect(context.markdown).toContain('- None');
+        expect(context.metadata).toEqual(
+          expect.objectContaining({
+            summarizedFiles: 0,
+            omittedFiles: 0
+          })
+        );
       }
     } finally {
       await rm(workspaceRoot, { recursive: true, force: true });

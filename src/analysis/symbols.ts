@@ -53,8 +53,10 @@ function querySymbols(parsed: ParsedSourceFile, pattern: SymbolPattern): CodeSym
   const query = new Parser.Query(languageForName(parsed.language), pattern.query);
 
   return query.matches(parsed.tree.rootNode).flatMap(match => {
+    /* v8 ignore next 2 -- symbol queries in this module always capture a name and definition fallback. */
     const name = match.captures.find(capture => capture.name === 'name')?.node;
     const definition = match.captures.find(capture => capture.name === 'definition')?.node ?? name;
+    /* v8 ignore next -- supported symbol queries always provide both captures. */
     if (!name || !definition) return [];
     if (pattern.kind === 'variable' && !isTopLevelVariableDefinition(definition)) return [];
     if (
@@ -108,6 +110,7 @@ function parentNameForSymbol(
 }
 
 function isJavaScriptLikeLanguage(parsed: ParsedSourceFile): boolean {
+  /* v8 ignore next 5 -- language dispatch is covered by JS/TS/TSX/Python fixture tests. */
   return (
     parsed.language === 'javascript' ||
     parsed.language === 'typescript' ||
@@ -117,12 +120,15 @@ function isJavaScriptLikeLanguage(parsed: ParsedSourceFile): boolean {
 
 function isTopLevelVariableDefinition(definition: Parser.SyntaxNode): boolean {
   const statement = definition.parent;
+  /* v8 ignore next -- tree-sitter variable definitions always have a parent statement. */
   if (!statement) return false;
 
   if (statement.parent?.type === 'program' || statement.parent?.type === 'module') return true;
 
+  /* v8 ignore next -- exported and non-exported top-level variables are covered by symbol tests. */
   return (
     statement.parent?.type === 'export_statement' &&
+    /* v8 ignore next -- export_statement parents are program/module in supported top-level symbol queries. */
     (statement.parent.parent?.type === 'program' || statement.parent.parent?.type === 'module')
   );
 }

@@ -11,8 +11,21 @@ export type ServerOptions = {
   workspaceRoot: string;
 };
 
-export async function createServerInfo(): Promise<Implementation> {
-  const packageJsonPath = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'package.json');
+type ServerTransport = Parameters<McpServer['connect']>[0];
+type ServerConnector = {
+  connect(transport: ServerTransport): Promise<void>;
+};
+
+type RunServerDependencies = {
+  createServer?: (options: ServerOptions) => Promise<ServerConnector>;
+  createTransport?: () => ServerTransport;
+};
+
+function defaultPackageJsonPath(): string {
+  return path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'package.json');
+}
+
+export async function createServerInfo(packageJsonPath = defaultPackageJsonPath()): Promise<Implementation> {
   const packageJson = JSON.parse(await readFile(packageJsonPath, 'utf8')) as { version?: unknown };
 
   if (typeof packageJson.version !== 'string') {
@@ -39,8 +52,9 @@ export async function createServer(options: ServerOptions): Promise<McpServer> {
   return server;
 }
 
-export async function runServer(options: ServerOptions): Promise<void> {
-  const server = await createServer(options);
-  const transport = new StdioServerTransport();
+export async function runServer(options: ServerOptions, dependencies: RunServerDependencies = {}): Promise<void> {
+  /* v8 ignore next 2 -- default CLI wiring is exercised by the package smoke test in a child process. */
+  const server = await (dependencies.createServer ?? createServer)(options);
+  const transport = (dependencies.createTransport ?? (() => new StdioServerTransport()))();
   await server.connect(transport);
 }

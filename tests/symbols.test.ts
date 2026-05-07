@@ -189,4 +189,16 @@ const obj = { top() { return 2; } };
 
     expect(symbolLabels(symbols)).toEqual(['function:outer']);
   });
+
+  it('extracts exported TypeScript variables', () => {
+    const symbols = listSymbols(
+      parseInline(
+        'exported-variable.ts',
+        `export const exportedValue = 1;
+`
+      )
+    );
+
+    expect(symbolLabels(symbols)).toEqual(['variable:exportedValue']);
+  });
 });

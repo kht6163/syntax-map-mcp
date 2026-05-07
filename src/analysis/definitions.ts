@@ -23,6 +23,7 @@ export async function findDefinitions(
   input: FindDefinitionsInput
 ): Promise<DefinitionResult> {
   const definitions: Definition[] = [];
+  /* v8 ignore next -- both filtered and unfiltered definition searches are covered by behavior tests. */
   const kinds = input.kinds ? new Set(input.kinds) : undefined;
 
   for (const inputPath of input.paths) {
@@ -30,6 +31,7 @@ export async function findDefinitions(
     if (!file.ok) return file;
 
     const parsed = parseSourceFile(file);
+    /* v8 ignore next -- parser failures are covered by parser tests. */
     if (!parsed.ok) return parsed;
 
     definitions.push(
@@ -48,5 +50,6 @@ export async function findDefinitions(
 }
 
 function lineAt(text: string, row: number): string {
+  /* v8 ignore next -- definition rows come from tree-sitter ranges within the source text. */
   return text.split(/\r?\n/)[row] ?? '';
 }

@@ -280,6 +280,27 @@ describe('createToolHandlers', () => {
     expectToolFailure(result, 'QUERY_ERROR');
   });
 
+  it('runs tree-sitter queries through the tool handler', async () => {
+    const handlers = await createHandlers();
+
+    const result = await handlers.runQuery({
+      path: 'sample.ts',
+      query: '(function_declaration name: (identifier) @name)'
+    });
+
+    expect(result.structuredContent).toEqual(
+      expect.objectContaining({
+        ok: true,
+        captures: expect.arrayContaining([
+          expect.objectContaining({
+            name: 'name',
+            text: 'formatUser'
+          })
+        ])
+      })
+    );
+  });
+
   it('finds definitions', async () => {
     const handlers = await createHandlers();
 
@@ -362,6 +383,34 @@ describe('createToolHandlers', () => {
     const result = await handlers.summarizeFile({ path: '../outside.ts' });
 
     expectToolFailure(result, 'WORKSPACE_OUTSIDE_ROOT');
+  });
+
+  it('maps analysis failures to tool failures across handlers', async () => {
+    const handlers = await createHandlers();
+
+    expectToolFailure(await handlers.listSymbols({ path: '../outside.ts' }), 'WORKSPACE_OUTSIDE_ROOT');
+    expectToolFailure(
+      await handlers.findDefinition({ name: 'Missing', paths: ['missing.ts'] }),
+      'FILE_NOT_FOUND'
+    );
+    expectToolFailure(await handlers.findReferences({ name: 'Missing', paths: ['missing.ts'] }), 'FILE_NOT_FOUND');
+    expectToolFailure(await handlers.runQuery({ path: '../outside.ts', query: '(identifier) @id' }), 'WORKSPACE_OUTSIDE_ROOT');
+    expectToolFailure(await handlers.getAstTree({ path: 'sample.ts', maxDepth: 21 }), 'PARSE_ERROR');
+    expectToolFailure(await handlers.lspDocumentSymbols({ path: '../outside.ts' }), 'WORKSPACE_OUTSIDE_ROOT');
+    expectToolFailure(
+      await handlers.lspDefinition({ path: 'sample.ts', line: -1, character: 0 }),
+      'PARSE_ERROR'
+    );
+    expectToolFailure(
+      await handlers.lspReferences({ path: 'sample.ts', line: 0, character: -1 }),
+      'PARSE_ERROR'
+    );
+    expectToolFailure(await handlers.lspHover({ path: 'sample.ts', line: -1, character: 0 }), 'PARSE_ERROR');
+    expectToolFailure(
+      await handlers.lspWorkspaceSymbols({ query: 'Missing', paths: ['missing.ts'] }),
+      'FILE_NOT_FOUND'
+    );
+    expectToolFailure(await handlers.buildContext({ detail: 'compact' }), 'INDEX_ERROR');
   });
 
   it('indexes the workspace and searches symbols from SQLite', async () => {
