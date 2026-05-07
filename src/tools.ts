@@ -14,7 +14,7 @@ import {
 } from './analysis/index.js';
 import { runTreeSitterQuery } from './analysis/query.js';
 import { findReferences as findReferencesAnalysis } from './analysis/references.js';
-import { getDocumentSymbols as getLspDocumentSymbols } from './analysis/lsp.js';
+import { getDefinition as getLspDefinition, getDocumentSymbols as getLspDocumentSymbols } from './analysis/lsp.js';
 import { summarizeFile as summarizeFileAnalysis } from './analysis/summary.js';
 import { listSymbols as listParsedSymbols } from './analysis/symbols.js';
 import { parseSourceFile } from './parser.js';
@@ -42,6 +42,7 @@ const symbolKindSchema = z.enum(['function', 'method', 'class', 'variable', 'int
 const detailSchema = z.enum(['compact', 'full']);
 const contextLineCountSchema = z.number().int().min(0).max(10);
 const astDepthSchema = z.number().int().min(0).max(20);
+const lspPositionSchema = z.number().int().min(0);
 
 export function createToolHandlers(workspace: Workspace) {
   return {
@@ -106,6 +107,17 @@ export function createToolHandlers(workspace: Workspace) {
 
     async lspDocumentSymbols(input: ListSymbolsInput): Promise<CallToolResult> {
       const result = await getLspDocumentSymbols(workspace, input);
+      if (!result.ok) return toolFailure(result.error.code, result.error.message);
+      return jsonResult(result);
+    },
+
+    async lspDefinition(input: {
+      path: string;
+      line: number;
+      character: number;
+      paths?: string[];
+    }): Promise<CallToolResult> {
+      const result = await getLspDefinition(workspace, input);
       if (!result.ok) return toolFailure(result.error.code, result.error.message);
       return jsonResult(result);
     },
@@ -290,6 +302,21 @@ export function registerTools(server: McpServer, workspace: Workspace): void {
       }
     },
     handlers.lspDocumentSymbols
+  );
+
+  server.registerTool(
+    'lsp_definition',
+    {
+      title: 'LSP definition',
+      description: 'Return definition locations for the identifier at a zero-based LSP position.',
+      inputSchema: {
+        path: z.string(),
+        line: lspPositionSchema,
+        character: lspPositionSchema,
+        paths: z.array(z.string()).optional()
+      }
+    },
+    handlers.lspDefinition
   );
 
   server.registerTool(

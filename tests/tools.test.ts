@@ -169,6 +169,32 @@ describe('createToolHandlers', () => {
     );
   });
 
+  it('returns LSP definitions for a source position', async () => {
+    const handlers = await createHandlers();
+
+    const result = await handlers.lspDefinition({
+      path: 'sample.ts',
+      line: 21,
+      character: 2
+    });
+
+    expect(result.structuredContent).toEqual({
+      ok: true,
+      path: 'sample.ts',
+      language: 'typescript',
+      name: 'formatUser',
+      locations: [
+        {
+          path: 'sample.ts',
+          range: {
+            start: { line: 15, character: 7 },
+            end: { line: 17, character: 1 }
+          }
+        }
+      ]
+    });
+  });
+
   it('returns a tool failure for invalid queries', async () => {
     const handlers = await createHandlers();
 
@@ -894,6 +920,7 @@ describe('registerTools', () => {
       'run_query',
       'get_ast_tree',
       'lsp_document_symbols',
+      'lsp_definition',
       'build_context',
       'index_workspace',
       'search_symbols',
