@@ -248,6 +248,30 @@ describe('createToolHandlers', () => {
     });
   });
 
+  it('returns LSP workspace symbols matching a query', async () => {
+    const handlers = await createHandlers();
+
+    const result = await handlers.lspWorkspaceSymbols({ query: 'Service' });
+
+    expect(result.structuredContent).toEqual({
+      ok: true,
+      query: 'Service',
+      symbols: [
+        {
+          name: 'UserService',
+          kind: 5,
+          location: {
+            path: 'sample.ts',
+            range: {
+              start: { line: 7, character: 7 },
+              end: expect.objectContaining({ line: expect.any(Number), character: expect.any(Number) })
+            }
+          }
+        }
+      ]
+    });
+  });
+
   it('returns a tool failure for invalid queries', async () => {
     const handlers = await createHandlers();
 
@@ -976,6 +1000,7 @@ describe('registerTools', () => {
       'lsp_definition',
       'lsp_references',
       'lsp_hover',
+      'lsp_workspace_symbols',
       'build_context',
       'index_workspace',
       'search_symbols',

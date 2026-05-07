@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { getDefinition, getDocumentSymbols, getHover, getReferences } from '../src/analysis/lsp.js';
+import { getDefinition, getDocumentSymbols, getHover, getReferences, getWorkspaceSymbols } from '../src/analysis/lsp.js';
 import { createWorkspace } from '../src/workspace.js';
 
 const fixtureRoot = path.join(process.cwd(), 'tests', 'fixtures');
@@ -128,6 +128,30 @@ describe('getDocumentSymbols', () => {
         kind: 'markdown',
         value: '**function** `formatUser`\n\n```typescript\nexport function formatUser(user: User): string {\n```'
       }
+    });
+  });
+
+  it('returns LSP workspace symbols matching a query', async () => {
+    const workspace = await createWorkspace(fixtureRoot);
+
+    const result = await getWorkspaceSymbols(workspace, { query: 'Service' });
+
+    expect(result).toEqual({
+      ok: true,
+      query: 'Service',
+      symbols: [
+        {
+          name: 'UserService',
+          kind: 5,
+          location: {
+            path: 'sample.ts',
+            range: {
+              start: { line: 7, character: 7 },
+              end: expect.objectContaining({ line: expect.any(Number), character: expect.any(Number) })
+            }
+          }
+        }
+      ]
     });
   });
 });

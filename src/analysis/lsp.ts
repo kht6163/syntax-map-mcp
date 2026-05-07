@@ -92,6 +92,26 @@ export type LspHoverResult =
     }
   | ToolFailure;
 
+export type LspWorkspaceSymbolsInput = {
+  query: string;
+  paths?: string[];
+  kinds?: CodeSymbol['kind'][];
+};
+
+export type LspWorkspaceSymbol = {
+  name: string;
+  kind: number;
+  location: LspLocation;
+};
+
+export type LspWorkspaceSymbolsResult =
+  | {
+      ok: true;
+      query: string;
+      symbols: LspWorkspaceSymbol[];
+    }
+  | ToolFailure;
+
 const SYMBOL_KIND_BY_CODE_KIND: Record<CodeSymbol['kind'], number> = {
   class: 5,
   method: 6,
@@ -280,6 +300,48 @@ export async function getHover(workspace: Workspace, input: LspHoverInput): Prom
             ? ''
             : `\`${name}\``
       }
+    };
+  } catch (error) {
+    return failure(error instanceof Error ? error.message : String(error));
+  }
+}
+
+export async function getWorkspaceSymbols(
+  workspace: Workspace,
+  input: LspWorkspaceSymbolsInput
+): Promise<LspWorkspaceSymbolsResult> {
+  try {
+    const symbols: LspWorkspaceSymbol[] = [];
+    const query = input.query.toLocaleLowerCase();
+    const kinds = input.kinds ? new Set(input.kinds) : undefined;
+    const paths = input.paths ?? (await workspace.listSourceFiles()).map(sourceFile => sourceFile.relativePath);
+
+    for (const inputPath of paths) {
+      const file = await workspace.readSourceFile(inputPath);
+      if (!file.ok) return file;
+
+      const parsed = parseSourceFile(file);
+      if (!parsed.ok) return parsed;
+
+      symbols.push(
+        ...listSymbols(parsed)
+          .filter(symbol => symbol.name.toLocaleLowerCase().includes(query))
+          .filter(symbol => !kinds || kinds.has(symbol.kind))
+          .map(symbol => ({
+            name: symbol.name,
+            kind: SYMBOL_KIND_BY_CODE_KIND[symbol.kind],
+            location: {
+              path: file.relativePath,
+              range: lspRange(symbol.range)
+            }
+          }))
+      );
+    }
+
+    return {
+      ok: true,
+      query: input.query,
+      symbols
     };
   } catch (error) {
     return failure(error instanceof Error ? error.message : String(error));

@@ -310,6 +310,38 @@ syntax-map-mcp의 주요 MCP 도구 입력과 응답 예시입니다. 응답 예
 }
 ```
 
+## lsp_workspace_symbols
+
+입력:
+
+```json
+{
+  "query": "Service"
+}
+```
+
+응답 일부:
+
+```json
+{
+  "ok": true,
+  "query": "Service",
+  "symbols": [
+    {
+      "name": "UserService",
+      "kind": 5,
+      "location": {
+        "path": "src/users.ts",
+        "range": {
+          "start": { "line": 7, "character": 7 },
+          "end": { "line": 13, "character": 1 }
+        }
+      }
+    }
+  ]
+}
+```
+
 ## build_context
 
 파일 경로 기반 입력:

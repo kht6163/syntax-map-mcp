@@ -18,7 +18,8 @@ import {
   getDefinition as getLspDefinition,
   getDocumentSymbols as getLspDocumentSymbols,
   getHover as getLspHover,
-  getReferences as getLspReferences
+  getReferences as getLspReferences,
+  getWorkspaceSymbols as getLspWorkspaceSymbols
 } from './analysis/lsp.js';
 import { summarizeFile as summarizeFileAnalysis } from './analysis/summary.js';
 import { listSymbols as listParsedSymbols } from './analysis/symbols.js';
@@ -145,6 +146,16 @@ export function createToolHandlers(workspace: Workspace) {
       paths?: string[];
     }): Promise<CallToolResult> {
       const result = await getLspHover(workspace, input);
+      if (!result.ok) return toolFailure(result.error.code, result.error.message);
+      return jsonResult(result);
+    },
+
+    async lspWorkspaceSymbols(input: {
+      query: string;
+      paths?: string[];
+      kinds?: CodeSymbol['kind'][];
+    }): Promise<CallToolResult> {
+      const result = await getLspWorkspaceSymbols(workspace, input);
       if (!result.ok) return toolFailure(result.error.code, result.error.message);
       return jsonResult(result);
     },
@@ -374,6 +385,20 @@ export function registerTools(server: McpServer, workspace: Workspace): void {
       }
     },
     handlers.lspHover
+  );
+
+  server.registerTool(
+    'lsp_workspace_symbols',
+    {
+      title: 'LSP workspace symbols',
+      description: 'Return workspace symbols matching a case-insensitive query.',
+      inputSchema: {
+        query: z.string(),
+        paths: z.array(z.string()).optional(),
+        kinds: z.array(symbolKindSchema).optional()
+      }
+    },
+    handlers.lspWorkspaceSymbols
   );
 
   server.registerTool(
