@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 1.0.0 - 2026-05-07
+
+- AST tree 조회와 LSP document symbols, definition, references, hover, workspace symbols, completion, signature help 도구를 포함한 1.0.0 기준 기능 구성을 확정했습니다.
+- `release:check`가 타입체크, 100% 커버리지, 빌드, 패키지 파일 검증, 설치 스모크 테스트를 모두 실행하도록 유지했습니다.
+
 ## 0.9.0 - 2026-05-07
 
 - `lsp_signature_help` 도구를 추가해 함수 호출 위치의 활성 signature와 parameter 정보를 반환하도록 했습니다.
