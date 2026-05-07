@@ -115,6 +115,33 @@ describe('createToolHandlers', () => {
     );
   });
 
+  it('returns AST trees for a source file', async () => {
+    const handlers = await createHandlers();
+
+    const result = await handlers.getAstTree({ path: 'sample.ts', maxDepth: 1 });
+
+    expect(result.structuredContent).toEqual(
+      expect.objectContaining({
+        ok: true,
+        path: 'sample.ts',
+        language: 'typescript',
+        tree: {
+          root: expect.objectContaining({
+            type: 'program',
+            named: true,
+            childCount: expect.any(Number),
+            children: expect.arrayContaining([
+              expect.objectContaining({
+                type: 'export_statement',
+                children: []
+              })
+            ])
+          })
+        }
+      })
+    );
+  });
+
   it('returns a tool failure for invalid queries', async () => {
     const handlers = await createHandlers();
 
@@ -838,6 +865,7 @@ describe('registerTools', () => {
       'find_references',
       'summarize_file',
       'run_query',
+      'get_ast_tree',
       'build_context',
       'index_workspace',
       'search_symbols',

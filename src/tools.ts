@@ -1,6 +1,7 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { z } from 'zod';
+import { getAstTree as getAstTreeAnalysis } from './analysis/ast-tree.js';
 import { buildContext as buildContextAnalysis } from './analysis/context.js';
 import { findDefinitions } from './analysis/definitions.js';
 import {
@@ -39,6 +40,7 @@ type RunQueryInput = {
 const symbolKindSchema = z.enum(['function', 'method', 'class', 'variable', 'interface', 'type']);
 const detailSchema = z.enum(['compact', 'full']);
 const contextLineCountSchema = z.number().int().min(0).max(10);
+const astDepthSchema = z.number().int().min(0).max(20);
 
 export function createToolHandlers(workspace: Workspace) {
   return {
@@ -87,6 +89,16 @@ export function createToolHandlers(workspace: Workspace) {
       if (!parsed.ok) return toolFailure(parsed.error.code, parsed.error.message);
 
       const result = runTreeSitterQuery(parsed, input.query);
+      if (!result.ok) return toolFailure(result.error.code, result.error.message);
+      return jsonResult(result);
+    },
+
+    async getAstTree(input: {
+      path: string;
+      maxDepth?: number;
+      includeText?: boolean;
+    }): Promise<CallToolResult> {
+      const result = await getAstTreeAnalysis(workspace, input);
       if (!result.ok) return toolFailure(result.error.code, result.error.message);
       return jsonResult(result);
     },
@@ -245,6 +257,20 @@ export function registerTools(server: McpServer, workspace: Workspace): void {
       }
     },
     handlers.runQuery
+  );
+
+  server.registerTool(
+    'get_ast_tree',
+    {
+      title: 'Get AST tree',
+      description: 'Return a depth-limited tree-sitter AST for one supported source file.',
+      inputSchema: {
+        path: z.string(),
+        maxDepth: astDepthSchema.optional(),
+        includeText: z.boolean().optional()
+      }
+    },
+    handlers.getAstTree
   );
 
   server.registerTool(

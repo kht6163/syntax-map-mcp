@@ -140,6 +140,47 @@ syntax-map-mcp의 주요 MCP 도구 입력과 응답 예시입니다. 응답 예
 }
 ```
 
+## get_ast_tree
+
+입력:
+
+```json
+{
+  "path": "src/users.ts",
+  "maxDepth": 2,
+  "includeText": false
+}
+```
+
+응답 일부:
+
+```json
+{
+  "ok": true,
+  "path": "src/users.ts",
+  "language": "typescript",
+  "tree": {
+    "root": {
+      "type": "program",
+      "named": true,
+      "childCount": 3,
+      "range": {
+        "start": { "row": 0, "column": 0 },
+        "end": { "row": 12, "column": 0 }
+      },
+      "children": [
+        {
+          "type": "export_statement",
+          "named": true,
+          "childCount": 1,
+          "children": []
+        }
+      ]
+    }
+  }
+}
+```
+
 ## build_context
 
 파일 경로 기반 입력:

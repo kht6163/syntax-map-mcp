@@ -11,6 +11,7 @@ const publicToolNames = [
   'find_references',
   'summarize_file',
   'run_query',
+  'get_ast_tree',
   'build_context',
   'index_workspace',
   'search_symbols',
@@ -52,6 +53,10 @@ describe('MCP tool schema', () => {
       find_references: { properties: ['name', 'paths'], required: ['name', 'paths'] },
       summarize_file: { properties: ['path'], required: ['path'] },
       run_query: { properties: ['path', 'query'], required: ['path', 'query'] },
+      get_ast_tree: {
+        properties: ['path', 'maxDepth', 'includeText'],
+        required: ['path']
+      },
       build_context: { properties: ['paths', 'detail', 'maxFiles', 'indexedSearch'], required: ['detail'] },
       index_workspace: { properties: [] },
       search_symbols: {
