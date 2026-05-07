@@ -1,6 +1,6 @@
 {
   "name": "syntax-map-mcp",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "description": "Tree-sitter based code analysis MCP server",
   "license": "MIT",
   "type": "module",
