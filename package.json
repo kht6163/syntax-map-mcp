@@ -31,7 +31,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "release:check": "npm run typecheck && npm test && npm run build && npm pack --dry-run"
+    "release:check": "npm run typecheck && npm test && npm run build && node scripts/check-package-files.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
