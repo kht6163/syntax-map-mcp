@@ -525,7 +525,7 @@ function rowValue(row: Record<string, SqlValue>, key: string): SqlValue {
 function assertIntegerRange(name: string, value: number | undefined, min: number, max: number): void {
   if (value === undefined) return;
   if (!Number.isInteger(value) || value < min || value > max) {
-    throw new Error(`${name} must be an integer between ${min} and ${max}`);
+    throw new Error(`${name} must be an integer between ${min} and ${max} (received ${String(value)})`);
   }
 }
 

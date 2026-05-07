@@ -75,14 +75,15 @@ async function createHandlers() {
 
 function expectToolFailure(
   result: { isError?: boolean; structuredContent?: unknown; content?: unknown },
-  code: string
+  code: string,
+  message: string | RegExp = expect.any(String)
 ) {
   expect(result.isError).toBe(true);
   expect(result.structuredContent).toEqual({
     ok: false,
     error: {
       code,
-      message: expect.any(String)
+      message
     }
   });
   expect(result.content).toEqual([
@@ -684,19 +685,27 @@ describe('createToolHandlers', () => {
         query: 'UserService',
         limit: 0
       });
-      expectToolFailure(invalidLimit, 'INDEX_ERROR');
+      expectToolFailure(invalidLimit, 'INDEX_ERROR', 'limit must be an integer between 1 and 500 (received 0)');
 
       const invalidContextBefore = await handlers.findIndexedDefinition({
         name: 'UserService',
         contextBefore: 11
       });
-      expectToolFailure(invalidContextBefore, 'INDEX_ERROR');
+      expectToolFailure(
+        invalidContextBefore,
+        'INDEX_ERROR',
+        'contextBefore must be an integer between 0 and 10 (received 11)'
+      );
 
       const invalidContextAfter = await handlers.findIndexedReferences({
         name: 'formatUser',
         contextAfter: -1
       });
-      expectToolFailure(invalidContextAfter, 'INDEX_ERROR');
+      expectToolFailure(
+        invalidContextAfter,
+        'INDEX_ERROR',
+        'contextAfter must be an integer between 0 and 10 (received -1)'
+      );
 
       const invalidIndexedContext = await handlers.buildContext({
         detail: 'compact',
@@ -705,7 +714,11 @@ describe('createToolHandlers', () => {
           limit: 501
         }
       });
-      expectToolFailure(invalidIndexedContext, 'INDEX_ERROR');
+      expectToolFailure(
+        invalidIndexedContext,
+        'INDEX_ERROR',
+        'limit must be an integer between 1 and 500 (received 501)'
+      );
     } finally {
       await rm(workspaceRoot, { recursive: true, force: true });
     }
