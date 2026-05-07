@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.1.7 - 2026-05-07
+
 - `release:check`가 npm 패키징 dry-run 결과의 필수 파일 포함 여부를 자동 검증하도록 했습니다.
 - MCP 서버 metadata의 version이 `package.json` 버전과 동기화되도록 했습니다.
 
