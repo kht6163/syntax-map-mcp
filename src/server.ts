@@ -4,11 +4,14 @@ import { fileURLToPath } from 'node:url';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { Implementation } from '@modelcontextprotocol/sdk/types.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { startIndexWatcher, type IndexWatcher } from './analysis/index-watcher.js';
 import { registerTools } from './tools.js';
 import { createWorkspace } from './workspace.js';
 
 export type ServerOptions = {
   workspaceRoot: string;
+  autoIndex?: boolean;
+  indexDebounceMs?: number;
 };
 
 type ServerTransport = Parameters<McpServer['connect']>[0];
@@ -19,6 +22,10 @@ type ServerConnector = {
 type RunServerDependencies = {
   createServer?: (options: ServerOptions) => Promise<ServerConnector>;
   createTransport?: () => ServerTransport;
+};
+
+type CreateServerDependencies = {
+  startIndexWatcher?: typeof startIndexWatcher;
 };
 
 function defaultPackageJsonPath(): string {
@@ -38,7 +45,10 @@ export async function createServerInfo(packageJsonPath = defaultPackageJsonPath(
   };
 }
 
-export async function createServer(options: ServerOptions): Promise<McpServer> {
+export async function createServer(
+  options: ServerOptions,
+  dependencies: CreateServerDependencies = {}
+): Promise<McpServer> {
   const workspace = await createWorkspace(options.workspaceRoot);
   const server = new McpServer(
     await createServerInfo(),
@@ -49,12 +59,36 @@ export async function createServer(options: ServerOptions): Promise<McpServer> {
   );
 
   registerTools(server, workspace);
+  if (options.autoIndex === true) {
+    attachIndexWatcher(
+      server,
+      (dependencies.startIndexWatcher ?? startIndexWatcher)(workspace, {
+        debounceMs: options.indexDebounceMs
+      })
+    );
+  }
+
   return server;
 }
 
 export async function runServer(options: ServerOptions, dependencies: RunServerDependencies = {}): Promise<void> {
   /* v8 ignore next 2 -- default CLI wiring is exercised by the package smoke test in a child process. */
-  const server = await (dependencies.createServer ?? createServer)(options);
-  const transport = (dependencies.createTransport ?? (() => new StdioServerTransport()))();
+  const server = await (dependencies.createServer ?? createServer)({
+    ...options,
+    autoIndex: options.autoIndex ?? true
+  });
+  const createTransport =
+    dependencies.createTransport ??
+    /* v8 ignore next -- default stdio transport wiring is exercised by the package smoke test. */
+    (() => new StdioServerTransport());
+  const transport = createTransport();
   await server.connect(transport);
+}
+
+function attachIndexWatcher(server: McpServer, watcher: IndexWatcher): void {
+  const closeServer = server.close.bind(server);
+  server.close = async () => {
+    watcher.stop();
+    await closeServer();
+  };
 }

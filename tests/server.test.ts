@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
@@ -49,22 +49,107 @@ describe('server metadata', () => {
     }
   });
 
+  it('starts the index watcher when auto indexing is enabled', async () => {
+    const watchedRoots: string[] = [];
+
+    await createServer(
+      { workspaceRoot: fixtureRoot, autoIndex: true },
+      {
+        startIndexWatcher: workspace => {
+          watchedRoots.push(workspace.root);
+          return {
+            ready: Promise.resolve(),
+            flush: async () => {},
+            stop: () => {}
+          };
+        }
+      }
+    );
+
+    expect(watchedRoots).toEqual([await realpath(fixtureRoot)]);
+  });
+
+  it('can start the default index watcher when auto indexing is enabled', async () => {
+    const workspaceRoot = await mkdtemp(path.join(tmpdir(), 'syntax-map-mcp-auto-index-'));
+
+    try {
+      await writeFile(path.join(workspaceRoot, 'sample.ts'), 'export function sample() {}\n');
+
+      const server = await createServer({
+        workspaceRoot,
+        autoIndex: true,
+        indexDebounceMs: 1
+      });
+
+      await server.close();
+    } finally {
+      await rm(workspaceRoot, { recursive: true, force: true });
+    }
+  });
+
+  it('stops the index watcher when the server closes', async () => {
+    let stopCount = 0;
+    const server = await createServer(
+      { workspaceRoot: fixtureRoot, autoIndex: true },
+      {
+        startIndexWatcher: () => ({
+          ready: Promise.resolve(),
+          flush: async () => {},
+          stop: () => {
+            stopCount += 1;
+          }
+        })
+      }
+    );
+
+    await server.close();
+
+    expect(stopCount).toBe(1);
+  });
+
   it('connects the MCP server to stdio transport', async () => {
     const calls: unknown[] = [];
     const transport = { name: 'transport' };
+    const serverOptions: unknown[] = [];
 
     await runServer(
       { workspaceRoot: fixtureRoot },
       {
-        createServer: async () => ({
+        createServer: async options => {
+          serverOptions.push(options);
+          return {
           connect: async connectedTransport => {
             calls.push(connectedTransport);
           }
-        }),
+          };
+        },
         createTransport: () => transport as never
       }
     );
 
     expect(calls).toEqual([transport]);
+    expect(serverOptions).toEqual([
+      {
+        workspaceRoot: fixtureRoot,
+        autoIndex: true
+      }
+    ]);
+  });
+
+  it('uses stdio transport by default', async () => {
+    const calls: unknown[] = [];
+
+    await runServer(
+      { workspaceRoot: fixtureRoot, autoIndex: false },
+      {
+        createServer: async () => ({
+          connect: async connectedTransport => {
+            calls.push(connectedTransport);
+          }
+        })
+      }
+    );
+
+    expect(calls).toHaveLength(1);
   });
 });
