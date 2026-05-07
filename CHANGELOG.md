@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- MCP `listTools()` 응답의 공개 tool 이름과 주요 input schema 필드를 검증하는 테스트를 추가했습니다.
 - `release:check`가 npm 패키지를 tarball로 설치한 뒤 MCP 초기화 응답을 확인하는 smoke test를 실행하도록 했습니다.
 
 ## 0.1.7 - 2026-05-07
