@@ -17,6 +17,7 @@ import { findReferences as findReferencesAnalysis } from './analysis/references.
 import {
   getDefinition as getLspDefinition,
   getDocumentSymbols as getLspDocumentSymbols,
+  getHover as getLspHover,
   getReferences as getLspReferences
 } from './analysis/lsp.js';
 import { summarizeFile as summarizeFileAnalysis } from './analysis/summary.js';
@@ -133,6 +134,17 @@ export function createToolHandlers(workspace: Workspace) {
       paths?: string[];
     }): Promise<CallToolResult> {
       const result = await getLspReferences(workspace, input);
+      if (!result.ok) return toolFailure(result.error.code, result.error.message);
+      return jsonResult(result);
+    },
+
+    async lspHover(input: {
+      path: string;
+      line: number;
+      character: number;
+      paths?: string[];
+    }): Promise<CallToolResult> {
+      const result = await getLspHover(workspace, input);
       if (!result.ok) return toolFailure(result.error.code, result.error.message);
       return jsonResult(result);
     },
@@ -347,6 +359,21 @@ export function registerTools(server: McpServer, workspace: Workspace): void {
       }
     },
     handlers.lspReferences
+  );
+
+  server.registerTool(
+    'lsp_hover',
+    {
+      title: 'LSP hover',
+      description: 'Return markdown hover contents for the identifier at a zero-based LSP position.',
+      inputSchema: {
+        path: z.string(),
+        line: lspPositionSchema,
+        character: lspPositionSchema,
+        paths: z.array(z.string()).optional()
+      }
+    },
+    handlers.lspHover
   );
 
   server.registerTool(

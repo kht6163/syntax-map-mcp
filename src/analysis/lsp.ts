@@ -47,6 +47,11 @@ export type LspLocation = {
   range: LspRange;
 };
 
+type IdentifierAtPosition = {
+  name: string;
+  range: LspRange;
+};
+
 export type LspDefinitionResult =
   | {
       ok: true;
@@ -66,6 +71,24 @@ export type LspReferencesResult =
       language: SupportedLanguage;
       name: string;
       locations: LspLocation[];
+    }
+  | ToolFailure;
+
+export type LspHoverInput = LspDefinitionInput;
+
+export type LspMarkupContent = {
+  kind: 'markdown';
+  value: string;
+};
+
+export type LspHoverResult =
+  | {
+      ok: true;
+      path: string;
+      language: SupportedLanguage;
+      name: string;
+      range?: LspRange;
+      contents: LspMarkupContent;
     }
   | ToolFailure;
 
@@ -119,7 +142,7 @@ function validatePosition(line: number, character: number): void {
   }
 }
 
-function identifierAt(text: string, line: number, character: number): string {
+function identifierAt(text: string, line: number, character: number): IdentifierAtPosition | undefined {
   const sourceLine = text.split(/\r?\n/)[line] ?? '';
   const identifierPattern = /[A-Za-z_$][A-Za-z0-9_$]*/g;
   let match: RegExpExecArray | null;
@@ -128,11 +151,15 @@ function identifierAt(text: string, line: number, character: number): string {
     const start = match.index;
     const end = start + match[0].length;
     if (character >= start && character <= end) {
-      return match[0];
+      return {
+        name: match[0],
+        range: {
+          start: { line, character: start },
+          end: { line, character: end }
+        }
+      };
     }
   }
-
-  return '';
 }
 
 export async function getDocumentSymbols(
@@ -166,7 +193,8 @@ export async function getDefinition(
     const parsed = parseSourceFile(file);
     if (!parsed.ok) return parsed;
 
-    const name = identifierAt(file.text, input.line, input.character);
+    const identifier = identifierAt(file.text, input.line, input.character);
+    const name = identifier?.name ?? '';
     const paths = input.paths ?? (await workspace.listSourceFiles()).map(sourceFile => sourceFile.relativePath);
     const definitions = name === '' ? { ok: true as const, definitions: [] } : await findDefinitions(workspace, { name, paths });
     if (!definitions.ok) return definitions;
@@ -199,7 +227,8 @@ export async function getReferences(
     const parsed = parseSourceFile(file);
     if (!parsed.ok) return parsed;
 
-    const name = identifierAt(file.text, input.line, input.character);
+    const identifier = identifierAt(file.text, input.line, input.character);
+    const name = identifier?.name ?? '';
     const paths = input.paths ?? (await workspace.listSourceFiles()).map(sourceFile => sourceFile.relativePath);
     const references = name === '' ? { ok: true as const, references: [] } : await findReferences(workspace, { name, paths });
     if (!references.ok) return references;
@@ -213,6 +242,44 @@ export async function getReferences(
         path: reference.path,
         range: lspRange(reference.range)
       }))
+    };
+  } catch (error) {
+    return failure(error instanceof Error ? error.message : String(error));
+  }
+}
+
+export async function getHover(workspace: Workspace, input: LspHoverInput): Promise<LspHoverResult> {
+  try {
+    validatePosition(input.line, input.character);
+
+    const file = await workspace.readSourceFile(input.path);
+    if (!file.ok) return file;
+
+    const parsed = parseSourceFile(file);
+    if (!parsed.ok) return parsed;
+
+    const identifier = identifierAt(file.text, input.line, input.character);
+    const name = identifier?.name ?? '';
+    const paths = input.paths ?? (await workspace.listSourceFiles()).map(sourceFile => sourceFile.relativePath);
+    const definitions = name === '' ? { ok: true as const, definitions: [] } : await findDefinitions(workspace, { name, paths });
+    if (!definitions.ok) return definitions;
+
+    const definition = definitions.definitions[0];
+
+    return {
+      ok: true,
+      path: file.relativePath,
+      language: parsed.language,
+      name,
+      range: identifier?.range,
+      contents: {
+        kind: 'markdown',
+        value: definition
+          ? `**${definition.kind}** \`${name}\`\n\n\`\`\`${parsed.language}\n${definition.snippet}\n\`\`\``
+          : name === ''
+            ? ''
+            : `\`${name}\``
+      }
     };
   } catch (error) {
     return failure(error instanceof Error ? error.message : String(error));

@@ -15,6 +15,7 @@ const publicToolNames = [
   'lsp_document_symbols',
   'lsp_definition',
   'lsp_references',
+  'lsp_hover',
   'build_context',
   'index_workspace',
   'search_symbols',
@@ -66,6 +67,10 @@ describe('MCP tool schema', () => {
         required: ['path', 'line', 'character']
       },
       lsp_references: {
+        properties: ['path', 'line', 'character', 'paths'],
+        required: ['path', 'line', 'character']
+      },
+      lsp_hover: {
         properties: ['path', 'line', 'character', 'paths'],
         required: ['path', 'line', 'character']
       },

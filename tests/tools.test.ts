@@ -223,6 +223,31 @@ describe('createToolHandlers', () => {
     );
   });
 
+  it('returns LSP hover contents for a source position', async () => {
+    const handlers = await createHandlers();
+
+    const result = await handlers.lspHover({
+      path: 'sample.ts',
+      line: 21,
+      character: 2
+    });
+
+    expect(result.structuredContent).toEqual({
+      ok: true,
+      path: 'sample.ts',
+      language: 'typescript',
+      name: 'formatUser',
+      range: {
+        start: { line: 21, character: 0 },
+        end: { line: 21, character: 10 }
+      },
+      contents: {
+        kind: 'markdown',
+        value: '**function** `formatUser`\n\n```typescript\nexport function formatUser(user: User): string {\n```'
+      }
+    });
+  });
+
   it('returns a tool failure for invalid queries', async () => {
     const handlers = await createHandlers();
 
@@ -950,6 +975,7 @@ describe('registerTools', () => {
       'lsp_document_symbols',
       'lsp_definition',
       'lsp_references',
+      'lsp_hover',
       'build_context',
       'index_workspace',
       'search_symbols',
