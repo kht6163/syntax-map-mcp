@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 0.7.1 - 2026-05-07
+
+- `release:check`가 100% Vitest V8 커버리지 게이트를 실행하도록 강화했습니다.
+- npm 패키지 설치 후 `.bin/syntax-map-mcp` symlink로 실행할 때 CLI가 바로 종료되던 문제를 수정했습니다.
+
 ## 0.7.0 - 2026-05-07
 
 - `lsp_workspace_symbols` 도구를 추가해 workspace 심볼 검색 결과를 LSP 형태로 반환하도록 했습니다.
