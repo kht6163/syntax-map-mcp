@@ -13,6 +13,7 @@ const publicToolNames = [
   'run_query',
   'get_ast_tree',
   'lsp_document_symbols',
+  'lsp_diagnostics',
   'lsp_definition',
   'lsp_references',
   'lsp_hover',
@@ -65,6 +66,7 @@ describe('MCP tool schema', () => {
         required: ['path']
       },
       lsp_document_symbols: { properties: ['path'], required: ['path'] },
+      lsp_diagnostics: { properties: ['path'], required: ['path'] },
       lsp_definition: {
         properties: ['path', 'line', 'character', 'paths'],
         required: ['path', 'line', 'character']

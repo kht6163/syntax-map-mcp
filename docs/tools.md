@@ -215,6 +215,37 @@ syntax-map-mcp의 주요 MCP 도구 입력과 응답 예시입니다. 응답 예
 }
 ```
 
+## lsp_diagnostics
+
+입력:
+
+```json
+{
+  "path": "src/users.ts"
+}
+```
+
+응답 일부:
+
+```json
+{
+  "ok": true,
+  "path": "src/users.ts",
+  "language": "typescript",
+  "diagnostics": [
+    {
+      "range": {
+        "start": { "line": 10, "character": 4 },
+        "end": { "line": 10, "character": 12 }
+      },
+      "severity": 1,
+      "source": "tree-sitter",
+      "message": "Syntax error"
+    }
+  ]
+}
+```
+
 ## lsp_definition
 
 입력:

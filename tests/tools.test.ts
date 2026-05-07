@@ -169,6 +169,34 @@ describe('createToolHandlers', () => {
     );
   });
 
+  it('returns LSP diagnostics for a source file', async () => {
+    const workspaceRoot = await mkdtemp(path.join(tmpdir(), 'syntax-map-mcp-diagnostics-'));
+    await writeFile(path.join(workspaceRoot, 'broken.ts'), 'export function broken(\n');
+
+    try {
+      const handlers = createToolHandlers(await createWorkspace(workspaceRoot));
+
+      const result = await handlers.lspDiagnostics({ path: 'broken.ts' });
+
+      expect(result.structuredContent).toEqual(
+        expect.objectContaining({
+          ok: true,
+          path: 'broken.ts',
+          language: 'typescript',
+          diagnostics: expect.arrayContaining([
+            expect.objectContaining({
+              severity: 1,
+              source: 'tree-sitter',
+              message: expect.stringContaining('Syntax error')
+            })
+          ])
+        })
+      );
+    } finally {
+      await rm(workspaceRoot, { recursive: true, force: true });
+    }
+  });
+
   it('returns LSP definitions for a source position', async () => {
     const handlers = await createHandlers();
 
@@ -450,6 +478,7 @@ describe('createToolHandlers', () => {
     expectToolFailure(await handlers.runQuery({ path: '../outside.ts', query: '(identifier) @id' }), 'WORKSPACE_OUTSIDE_ROOT');
     expectToolFailure(await handlers.getAstTree({ path: 'sample.ts', maxDepth: 21 }), 'PARSE_ERROR');
     expectToolFailure(await handlers.lspDocumentSymbols({ path: '../outside.ts' }), 'WORKSPACE_OUTSIDE_ROOT');
+    expectToolFailure(await handlers.lspDiagnostics({ path: '../outside.ts' }), 'WORKSPACE_OUTSIDE_ROOT');
     expectToolFailure(
       await handlers.lspDefinition({ path: 'sample.ts', line: -1, character: 0 }),
       'PARSE_ERROR'
@@ -1101,6 +1130,7 @@ describe('registerTools', () => {
       'run_query',
       'get_ast_tree',
       'lsp_document_symbols',
+      'lsp_diagnostics',
       'lsp_definition',
       'lsp_references',
       'lsp_hover',

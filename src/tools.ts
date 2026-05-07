@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { getAstTree as getAstTreeAnalysis } from './analysis/ast-tree.js';
 import { buildContext as buildContextAnalysis } from './analysis/context.js';
 import { findDefinitions } from './analysis/definitions.js';
+import { getDiagnostics as getLspDiagnostics } from './analysis/diagnostics.js';
 import {
   clearIndex as clearWorkspaceIndex,
   findIndexedDefinitions,
@@ -117,6 +118,12 @@ export function createToolHandlers(workspace: Workspace) {
 
     async lspDocumentSymbols(input: ListSymbolsInput): Promise<CallToolResult> {
       const result = await getLspDocumentSymbols(workspace, input);
+      if (!result.ok) return toolFailure(result.error.code, result.error.message);
+      return jsonResult(result);
+    },
+
+    async lspDiagnostics(input: ListSymbolsInput): Promise<CallToolResult> {
+      const result = await getLspDiagnostics(workspace, input);
       if (!result.ok) return toolFailure(result.error.code, result.error.message);
       return jsonResult(result);
     },
@@ -370,6 +377,18 @@ export function registerTools(server: McpServer, workspace: Workspace): void {
       }
     },
     handlers.lspDocumentSymbols
+  );
+
+  server.registerTool(
+    'lsp_diagnostics',
+    {
+      title: 'LSP diagnostics',
+      description: 'Return lightweight syntax diagnostics from tree-sitter parse errors.',
+      inputSchema: {
+        path: z.string()
+      }
+    },
+    handlers.lspDiagnostics
   );
 
   server.registerTool(
