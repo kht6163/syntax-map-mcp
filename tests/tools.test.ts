@@ -299,6 +299,32 @@ describe('createToolHandlers', () => {
     });
   });
 
+  it('returns LSP signature help for a source position', async () => {
+    const handlers = await createHandlers();
+
+    const result = await handlers.lspSignatureHelp({
+      path: 'sample.ts',
+      line: 21,
+      character: 11,
+      paths: ['sample.ts']
+    });
+
+    expect(result.structuredContent).toEqual({
+      ok: true,
+      path: 'sample.ts',
+      language: 'typescript',
+      name: 'formatUser',
+      activeSignature: 0,
+      activeParameter: 0,
+      signatures: [
+        {
+          label: 'formatUser(user: User): string',
+          parameters: [{ label: 'user: User' }]
+        }
+      ]
+    });
+  });
+
   it('returns a tool failure for invalid queries', async () => {
     const handlers = await createHandlers();
 
@@ -438,6 +464,7 @@ describe('createToolHandlers', () => {
       'FILE_NOT_FOUND'
     );
     expectToolFailure(await handlers.lspCompletion({ path: 'sample.ts', line: -1, character: 0 }), 'PARSE_ERROR');
+    expectToolFailure(await handlers.lspSignatureHelp({ path: 'sample.ts', line: -1, character: 0 }), 'PARSE_ERROR');
     expectToolFailure(await handlers.buildContext({ detail: 'compact' }), 'INDEX_ERROR');
   });
 
@@ -1079,6 +1106,7 @@ describe('registerTools', () => {
       'lsp_hover',
       'lsp_workspace_symbols',
       'lsp_completion',
+      'lsp_signature_help',
       'build_context',
       'index_workspace',
       'search_symbols',

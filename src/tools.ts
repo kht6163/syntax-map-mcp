@@ -20,6 +20,7 @@ import {
   getDocumentSymbols as getLspDocumentSymbols,
   getHover as getLspHover,
   getReferences as getLspReferences,
+  getSignatureHelp as getLspSignatureHelp,
   getWorkspaceSymbols as getLspWorkspaceSymbols
 } from './analysis/lsp.js';
 import { summarizeFile as summarizeFileAnalysis } from './analysis/summary.js';
@@ -172,6 +173,17 @@ export function createToolHandlers(workspace: Workspace) {
       limit?: number;
     }): Promise<CallToolResult> {
       const result = await getLspCompletion(workspace, input);
+      if (!result.ok) return toolFailure(result.error.code, result.error.message);
+      return jsonResult(result);
+    },
+
+    async lspSignatureHelp(input: {
+      path: string;
+      line: number;
+      character: number;
+      paths?: string[];
+    }): Promise<CallToolResult> {
+      const result = await getLspSignatureHelp(workspace, input);
       if (!result.ok) return toolFailure(result.error.code, result.error.message);
       return jsonResult(result);
     },
@@ -434,6 +446,21 @@ export function registerTools(server: McpServer, workspace: Workspace): void {
       }
     },
     handlers.lspCompletion
+  );
+
+  server.registerTool(
+    'lsp_signature_help',
+    {
+      title: 'LSP signature help',
+      description: 'Return signature help for the active call at a zero-based LSP position.',
+      inputSchema: {
+        path: z.string(),
+        line: lspPositionSchema,
+        character: lspPositionSchema,
+        paths: z.array(z.string()).optional()
+      }
+    },
+    handlers.lspSignatureHelp
   );
 
   server.registerTool(

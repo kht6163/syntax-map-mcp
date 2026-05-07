@@ -42,6 +42,7 @@ npx -y syntax-map-mcp --workspace-root /path/to/workspace
 - `lsp_hover`: 파일의 LSP 위치에 있는 식별자의 hover markdown을 반환
 - `lsp_workspace_symbols`: workspace 전체에서 LSP WorkspaceSymbol 형태의 심볼 검색 결과 반환
 - `lsp_completion`: 파일의 LSP 위치 앞 prefix에 맞는 workspace 심볼 completion item 반환
+- `lsp_signature_help`: 파일의 LSP 위치에서 활성 함수 호출 signature와 parameter 반환
 - `build_context`: 여러 파일 요약을 markdown 컨텍스트로 구성
 - `index_workspace`: 지원 소스 파일을 파싱해 SQLite 심볼/참조 인덱스 생성 또는 갱신
 - `search_symbols`: SQLite 인덱스에서 심볼 이름 검색 및 snippet 반환

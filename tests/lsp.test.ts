@@ -8,6 +8,7 @@ import {
   getDocumentSymbols,
   getHover,
   getReferences,
+  getSignatureHelp,
   getWorkspaceSymbols
 } from '../src/analysis/lsp.js';
 import { createWorkspace } from '../src/workspace.js';
@@ -510,6 +511,334 @@ describe('getDocumentSymbols', () => {
       error: {
         code: 'FILE_NOT_FOUND',
         message: expect.any(String)
+      }
+    });
+  });
+
+  it('returns LSP signature help for a function call position', async () => {
+    const workspace = await createWorkspace(fixtureRoot);
+
+    const result = await getSignatureHelp(workspace, {
+      path: 'sample.ts',
+      line: 21,
+      character: 11,
+      paths: ['sample.ts']
+    });
+
+    expect(result).toEqual({
+      ok: true,
+      path: 'sample.ts',
+      language: 'typescript',
+      name: 'formatUser',
+      activeSignature: 0,
+      activeParameter: 0,
+      signatures: [
+        {
+          label: 'formatUser(user: User): string',
+          parameters: [{ label: 'user: User' }]
+        }
+      ]
+    });
+  });
+
+  it('tracks the active LSP signature parameter by comma position', async () => {
+    const root = await mkdtemp(path.join(tmpdir(), 'syntax-map-lsp-signature-'));
+
+    try {
+      await writeFile(
+        path.join(root, 'calls.ts'),
+        ['export function pair(left: string, right: number): string { return left + right; }', 'pair("a", 1);'].join('\n')
+      );
+      const workspace = await createWorkspace(root);
+
+      const result = await getSignatureHelp(workspace, {
+        path: 'calls.ts',
+        line: 1,
+        character: 10,
+        paths: ['calls.ts']
+      });
+
+      expect(result).toEqual({
+        ok: true,
+        path: 'calls.ts',
+        language: 'typescript',
+        name: 'pair',
+        activeSignature: 0,
+        activeParameter: 1,
+        signatures: [
+          {
+            label: 'pair(left: string, right: number): string',
+            parameters: [{ label: 'left: string' }, { label: 'right: number' }]
+          }
+        ]
+      });
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it('handles nested calls when calculating LSP signature parameters', async () => {
+    const root = await mkdtemp(path.join(tmpdir(), 'syntax-map-lsp-signature-nested-'));
+
+    try {
+      await writeFile(
+        path.join(root, 'nested.ts'),
+        [
+          'export function inner(value: string): string { return value; }',
+          'export function outer(left: string, right: string): string { return left + right; }',
+          'outer(inner("a"), "b");'
+        ].join('\n')
+      );
+      const workspace = await createWorkspace(root);
+
+      const result = await getSignatureHelp(workspace, {
+        path: 'nested.ts',
+        line: 2,
+        character: 18,
+        paths: ['nested.ts']
+      });
+
+      expect(result).toEqual({
+        ok: true,
+        path: 'nested.ts',
+        language: 'typescript',
+        name: 'outer',
+        activeSignature: 0,
+        activeParameter: 1,
+        signatures: [
+          {
+            label: 'outer(left: string, right: string): string',
+            parameters: [{ label: 'left: string' }, { label: 'right: string' }]
+          }
+        ]
+      });
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it('returns empty LSP signature help when the active call has no definition', async () => {
+    const root = await mkdtemp(path.join(tmpdir(), 'syntax-map-lsp-signature-missing-'));
+
+    try {
+      await writeFile(path.join(root, 'missing.ts'), 'missingThing(value);\n');
+      const workspace = await createWorkspace(root);
+
+      const result = await getSignatureHelp(workspace, {
+        path: 'missing.ts',
+        line: 0,
+        character: 13
+      });
+
+      expect(result).toEqual({
+        ok: true,
+        path: 'missing.ts',
+        language: 'typescript',
+        name: 'missingThing',
+        activeSignature: undefined,
+        activeParameter: undefined,
+        signatures: []
+      });
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it('returns LSP signature help for zero-parameter functions', async () => {
+    const root = await mkdtemp(path.join(tmpdir(), 'syntax-map-lsp-signature-zero-'));
+
+    try {
+      await writeFile(path.join(root, 'zero.ts'), 'export function zero(): number { return 0; }\nzero();\n');
+      const workspace = await createWorkspace(root);
+
+      const result = await getSignatureHelp(workspace, {
+        path: 'zero.ts',
+        line: 1,
+        character: 5,
+        paths: ['zero.ts']
+      });
+
+      expect(result).toEqual({
+        ok: true,
+        path: 'zero.ts',
+        language: 'typescript',
+        name: 'zero',
+        activeSignature: 0,
+        activeParameter: 0,
+        signatures: [
+          {
+            label: 'zero(): number',
+            parameters: []
+          }
+        ]
+      });
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it('returns LSP signature help for functions without return annotations', async () => {
+    const root = await mkdtemp(path.join(tmpdir(), 'syntax-map-lsp-signature-no-return-'));
+
+    try {
+      await writeFile(path.join(root, 'plain.ts'), 'export function plain() { return 0; }\nplain();\n');
+      const workspace = await createWorkspace(root);
+
+      const result = await getSignatureHelp(workspace, {
+        path: 'plain.ts',
+        line: 1,
+        character: 6,
+        paths: ['plain.ts']
+      });
+
+      expect(result).toEqual({
+        ok: true,
+        path: 'plain.ts',
+        language: 'typescript',
+        name: 'plain',
+        activeSignature: 0,
+        activeParameter: 0,
+        signatures: [
+          {
+            label: 'plain()',
+            parameters: []
+          }
+        ]
+      });
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it('returns LSP signature help for class methods', async () => {
+    const root = await mkdtemp(path.join(tmpdir(), 'syntax-map-lsp-signature-method-'));
+
+    try {
+      await writeFile(
+        path.join(root, 'method.ts'),
+        [
+          'class Box {',
+          '  make(value: string): string { return value; }',
+          '}',
+          'const box = new Box();',
+          'box.make("a");'
+        ].join('\n')
+      );
+      const workspace = await createWorkspace(root);
+
+      const result = await getSignatureHelp(workspace, {
+        path: 'method.ts',
+        line: 4,
+        character: 10,
+        paths: ['method.ts']
+      });
+
+      expect(result).toEqual({
+        ok: true,
+        path: 'method.ts',
+        language: 'typescript',
+        name: 'make',
+        activeSignature: 0,
+        activeParameter: 0,
+        signatures: [
+          {
+            label: 'make(value: string): string',
+            parameters: [{ label: 'value: string' }]
+          }
+        ]
+      });
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it('returns LSP signature help for Python functions', async () => {
+    const workspace = await createWorkspace(fixtureRoot);
+
+    const result = await getSignatureHelp(workspace, {
+      path: 'sample.py',
+      line: 25,
+      character: 12,
+      paths: ['sample.py']
+    });
+
+    expect(result).toEqual({
+      ok: true,
+      path: 'sample.py',
+      language: 'python',
+      name: 'format_user',
+      activeSignature: 0,
+      activeParameter: 0,
+      signatures: [
+        {
+          label: 'format_user(user: User) -> str',
+          parameters: [{ label: 'user: User' }]
+        }
+      ]
+    });
+  });
+
+  it('ignores parenthesized expressions without a callable name for signature help', async () => {
+    const root = await mkdtemp(path.join(tmpdir(), 'syntax-map-lsp-signature-expression-'));
+
+    try {
+      await writeFile(path.join(root, 'expression.ts'), '(value);\n');
+      const workspace = await createWorkspace(root);
+
+      const result = await getSignatureHelp(workspace, {
+        path: 'expression.ts',
+        line: 0,
+        character: 1
+      });
+
+      expect(result).toEqual({
+        ok: true,
+        path: 'expression.ts',
+        language: 'typescript',
+        name: '',
+        activeSignature: undefined,
+        activeParameter: undefined,
+        signatures: []
+      });
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it('returns empty LSP signature help when no call is active', async () => {
+    const workspace = await createWorkspace(fixtureRoot);
+
+    const result = await getSignatureHelp(workspace, {
+      path: 'sample.ts',
+      line: 20,
+      character: 0
+    });
+
+    expect(result).toEqual({
+      ok: true,
+      path: 'sample.ts',
+      language: 'typescript',
+      name: '',
+      activeSignature: undefined,
+      activeParameter: undefined,
+      signatures: []
+    });
+  });
+
+  it('rejects invalid LSP signature help positions', async () => {
+    const workspace = await createWorkspace(fixtureRoot);
+
+    const result = await getSignatureHelp(workspace, {
+      path: 'sample.ts',
+      line: -1,
+      character: 0
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      error: {
+        code: 'PARSE_ERROR',
+        message: 'line must be a non-negative integer (received -1)'
       }
     });
   });

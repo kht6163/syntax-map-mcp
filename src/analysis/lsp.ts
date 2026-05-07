@@ -139,6 +139,30 @@ export type LspCompletionResult =
     }
   | ToolFailure;
 
+export type LspSignatureHelpInput = {
+  path: string;
+  line: number;
+  character: number;
+  paths?: string[];
+};
+
+export type LspSignatureInformation = {
+  label: string;
+  parameters: Array<{ label: string }>;
+};
+
+export type LspSignatureHelpResult =
+  | {
+      ok: true;
+      path: string;
+      language: SupportedLanguage;
+      name: string;
+      activeSignature?: number;
+      activeParameter?: number;
+      signatures: LspSignatureInformation[];
+    }
+  | ToolFailure;
+
 const SYMBOL_KIND_BY_CODE_KIND: Record<CodeSymbol['kind'], number> = {
   class: 5,
   method: 6,
@@ -232,6 +256,66 @@ function completionPrefixAt(text: string, line: number, character: number): stri
   const sourceLine = text.split(/\r?\n/)[line] ?? '';
   const match = sourceLine.slice(0, character).match(/[A-Za-z_$][A-Za-z0-9_$]*$/);
   return match?.[0] ?? '';
+}
+
+function callAt(text: string, line: number, character: number): { name: string; activeParameter: number } | undefined {
+  /* v8 ignore next -- out-of-range positions are normalized to an empty line. */
+  const sourceLine = text.split(/\r?\n/)[line] ?? '';
+  const beforeCursor = sourceLine.slice(0, character);
+  let depth = 0;
+
+  for (let index = beforeCursor.length - 1; index >= 0; index -= 1) {
+    const characterAtIndex = beforeCursor[index];
+    if (characterAtIndex === ')') {
+      depth += 1;
+      continue;
+    }
+    if (characterAtIndex !== '(') continue;
+    if (depth > 0) {
+      depth -= 1;
+      continue;
+    }
+
+    const name = beforeCursor.slice(0, index).match(/([A-Za-z_$][A-Za-z0-9_$]*)\s*$/)?.[1];
+    if (!name) return undefined;
+
+    const argumentText = beforeCursor.slice(index + 1);
+    const activeParameter = argumentText.length === 0 ? 0 : argumentText.split(',').length - 1;
+    return { name, activeParameter };
+  }
+}
+
+function splitParameters(parameters: string): string[] {
+  if (parameters.trim() === '') return [];
+  return parameters.split(',').map(parameter => parameter.trim());
+}
+
+function signatureFromSnippet(name: string, snippet: string): LspSignatureInformation {
+  const firstLine = snippet.split(/\r?\n/)[0].trim();
+  const functionMatch = firstLine.match(
+    /^(?:export\s+)?(?:async\s+)?function\s+[A-Za-z_$][A-Za-z0-9_$]*\s*\(([^)]*)\)\s*([^{:]*(?::\s*[^{]+)?)[{:]?/
+  );
+  const methodMatch = firstLine.match(
+    /^(?:public\s+|private\s+|protected\s+|static\s+|async\s+)*[A-Za-z_$][A-Za-z0-9_$]*\s*\(([^)]*)\)\s*([^{:]*(?::\s*[^{]+)?)[{:]?/
+  );
+  const pythonMatch = firstLine.match(/^def\s+[A-Za-z_$][A-Za-z0-9_$]*\s*\(([^)]*)\)\s*([^:]*)/);
+  const match = functionMatch ?? pythonMatch ?? methodMatch;
+
+  /* v8 ignore next 6 -- indexed function and method definitions provide recognizable signature snippets. */
+  if (!match) {
+    return {
+      label: `${name}()`,
+      parameters: []
+    };
+  }
+
+  const parameters = splitParameters(match[1]);
+  const suffix = match[2].trim();
+
+  return {
+    label: `${name}(${parameters.join(', ')})${suffix === '' ? '' : suffix.startsWith(':') ? suffix : ` ${suffix}`}`,
+    parameters: parameters.map(parameter => ({ label: parameter }))
+  };
 }
 
 export async function getDocumentSymbols(
@@ -473,6 +557,60 @@ export async function getCompletion(workspace: Workspace, input: LspCompletionIn
       prefix,
       isIncomplete: false,
       items: [...items.values()].sort((left, right) => left.label.localeCompare(right.label))
+    };
+  } catch (error) {
+    /* v8 ignore next -- validation and workspace listing failures throw Error instances. */
+    return failure(error instanceof Error ? error.message : String(error));
+  }
+}
+
+export async function getSignatureHelp(
+  workspace: Workspace,
+  input: LspSignatureHelpInput
+): Promise<LspSignatureHelpResult> {
+  try {
+    validatePosition(input.line, input.character);
+
+    const file = await workspace.readSourceFile(input.path);
+    /* v8 ignore next -- workspace failures are covered by LSP and tool handler tests. */
+    if (!file.ok) return file;
+
+    const parsed = parseSourceFile(file);
+    /* v8 ignore next -- parser failure handling is covered by parser tests. */
+    if (!parsed.ok) return parsed;
+
+    const call = callAt(file.text, input.line, input.character);
+    if (!call) {
+      return {
+        ok: true,
+        path: file.relativePath,
+        language: parsed.language,
+        name: '',
+        activeSignature: undefined,
+        activeParameter: undefined,
+        signatures: []
+      };
+    }
+
+    const paths = input.paths ?? (await workspace.listSourceFiles()).map(sourceFile => sourceFile.relativePath);
+    const definitions = await findDefinitions(workspace, {
+      name: call.name,
+      paths,
+      kinds: ['function', 'method']
+    });
+    /* v8 ignore next -- definition failures are covered at the definitions layer. */
+    if (!definitions.ok) return definitions;
+
+    const signatures = definitions.definitions.map(definition => signatureFromSnippet(call.name, definition.snippet));
+
+    return {
+      ok: true,
+      path: file.relativePath,
+      language: parsed.language,
+      name: call.name,
+      activeSignature: signatures.length === 0 ? undefined : 0,
+      activeParameter: signatures.length === 0 ? undefined : call.activeParameter,
+      signatures
     };
   } catch (error) {
     /* v8 ignore next -- validation and workspace listing failures throw Error instances. */

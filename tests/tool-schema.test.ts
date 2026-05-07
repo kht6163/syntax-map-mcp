@@ -18,6 +18,7 @@ const publicToolNames = [
   'lsp_hover',
   'lsp_workspace_symbols',
   'lsp_completion',
+  'lsp_signature_help',
   'build_context',
   'index_workspace',
   'search_symbols',
@@ -82,6 +83,10 @@ describe('MCP tool schema', () => {
       },
       lsp_completion: {
         properties: ['path', 'line', 'character', 'paths', 'kinds', 'limit'],
+        required: ['path', 'line', 'character']
+      },
+      lsp_signature_help: {
+        properties: ['path', 'line', 'character', 'paths'],
         required: ['path', 'line', 'character']
       },
       build_context: { properties: ['paths', 'detail', 'maxFiles', 'indexedSearch'], required: ['detail'] },
