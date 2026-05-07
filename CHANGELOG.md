@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 1.1.0 - 2026-05-07
+
 - Rust `.rs` 파일 파싱을 지원하고, `get_ast_tree`와 LSP document symbols, definition, references, hover, workspace symbols, completion, signature help에서 Rust 심볼을 처리하도록 했습니다.
 - Rust `struct`, `enum`, `trait`, `type`, `const`, `static`, `fn`, `impl` method, trait method signature를 심볼로 추출하도록 했습니다.
 
