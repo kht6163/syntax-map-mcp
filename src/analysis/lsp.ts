@@ -112,6 +112,33 @@ export type LspWorkspaceSymbolsResult =
     }
   | ToolFailure;
 
+export type LspCompletionInput = {
+  path: string;
+  line: number;
+  character: number;
+  paths?: string[];
+  kinds?: CodeSymbol['kind'][];
+  limit?: number;
+};
+
+export type LspCompletionItem = {
+  label: string;
+  kind: number;
+  detail: string;
+  sortText: string;
+};
+
+export type LspCompletionResult =
+  | {
+      ok: true;
+      path: string;
+      language: SupportedLanguage;
+      prefix: string;
+      isIncomplete: false;
+      items: LspCompletionItem[];
+    }
+  | ToolFailure;
+
 const SYMBOL_KIND_BY_CODE_KIND: Record<CodeSymbol['kind'], number> = {
   class: 5,
   method: 6,
@@ -119,6 +146,15 @@ const SYMBOL_KIND_BY_CODE_KIND: Record<CodeSymbol['kind'], number> = {
   function: 12,
   variable: 13,
   type: 26
+};
+
+const COMPLETION_KIND_BY_CODE_KIND: Record<CodeSymbol['kind'], number> = {
+  class: 7,
+  method: 2,
+  interface: 8,
+  function: 3,
+  variable: 6,
+  type: 25
 };
 
 function lspRange(range: SourceRange): LspRange {
@@ -163,6 +199,13 @@ function validatePosition(line: number, character: number): void {
   }
 }
 
+function validateLimit(limit: number | undefined): void {
+  if (limit === undefined) return;
+  if (!Number.isInteger(limit) || limit < 1 || limit > 500) {
+    throw new Error(`limit must be an integer between 1 and 500 (received ${String(limit)})`);
+  }
+}
+
 function identifierAt(text: string, line: number, character: number): IdentifierAtPosition | undefined {
   /* v8 ignore next -- out-of-range positions are normalized to an empty line. */
   const sourceLine = text.split(/\r?\n/)[line] ?? '';
@@ -182,6 +225,13 @@ function identifierAt(text: string, line: number, character: number): Identifier
       };
     }
   }
+}
+
+function completionPrefixAt(text: string, line: number, character: number): string {
+  /* v8 ignore next -- out-of-range positions are normalized to an empty line. */
+  const sourceLine = text.split(/\r?\n/)[line] ?? '';
+  const match = sourceLine.slice(0, character).match(/[A-Za-z_$][A-Za-z0-9_$]*$/);
+  return match?.[0] ?? '';
 }
 
 export async function getDocumentSymbols(
@@ -364,6 +414,68 @@ export async function getWorkspaceSymbols(
     };
   } catch (error) {
     /* v8 ignore next -- workspace listing failures throw Error instances. */
+    return failure(error instanceof Error ? error.message : String(error));
+  }
+}
+
+export async function getCompletion(workspace: Workspace, input: LspCompletionInput): Promise<LspCompletionResult> {
+  try {
+    validatePosition(input.line, input.character);
+    validateLimit(input.limit);
+
+    const file = await workspace.readSourceFile(input.path);
+    /* v8 ignore next -- workspace failures are covered by LSP and tool handler tests. */
+    if (!file.ok) return file;
+
+    const parsed = parseSourceFile(file);
+    /* v8 ignore next -- parser failure handling is covered by parser tests. */
+    if (!parsed.ok) return parsed;
+
+    const prefix = completionPrefixAt(file.text, input.line, input.character);
+    const lowerPrefix = prefix.toLocaleLowerCase();
+    const kinds = input.kinds ? new Set(input.kinds) : undefined;
+    const limit = input.limit ?? 50;
+    const paths = input.paths ?? (await workspace.listSourceFiles()).map(sourceFile => sourceFile.relativePath);
+    const items = new Map<string, LspCompletionItem>();
+
+    for (const inputPath of paths) {
+      if (items.size >= limit) break;
+
+      const candidateFile = await workspace.readSourceFile(inputPath);
+      /* v8 ignore next -- workspace failures are covered by completion tests. */
+      if (!candidateFile.ok) return candidateFile;
+
+      const candidateParsed = parseSourceFile(candidateFile);
+      /* v8 ignore next -- parser failure handling is covered by parser tests. */
+      if (!candidateParsed.ok) return candidateParsed;
+
+      for (const symbol of listSymbols(candidateParsed)) {
+        if (items.size >= limit) break;
+        if (kinds && !kinds.has(symbol.kind)) continue;
+        if (lowerPrefix !== '' && !symbol.name.toLocaleLowerCase().startsWith(lowerPrefix)) continue;
+
+        const key = `${symbol.kind}:${symbol.name}`;
+        if (items.has(key)) continue;
+
+        items.set(key, {
+          label: symbol.name,
+          kind: COMPLETION_KIND_BY_CODE_KIND[symbol.kind],
+          detail: `${symbol.kind} from ${candidateFile.relativePath}`,
+          sortText: symbol.name
+        });
+      }
+    }
+
+    return {
+      ok: true,
+      path: file.relativePath,
+      language: parsed.language,
+      prefix,
+      isIncomplete: false,
+      items: [...items.values()].sort((left, right) => left.label.localeCompare(right.label))
+    };
+  } catch (error) {
+    /* v8 ignore next -- validation and workspace listing failures throw Error instances. */
     return failure(error instanceof Error ? error.message : String(error));
   }
 }

@@ -15,6 +15,7 @@ import {
 import { runTreeSitterQuery } from './analysis/query.js';
 import { findReferences as findReferencesAnalysis } from './analysis/references.js';
 import {
+  getCompletion as getLspCompletion,
   getDefinition as getLspDefinition,
   getDocumentSymbols as getLspDocumentSymbols,
   getHover as getLspHover,
@@ -158,6 +159,19 @@ export function createToolHandlers(workspace: Workspace) {
       kinds?: CodeSymbol['kind'][];
     }): Promise<CallToolResult> {
       const result = await getLspWorkspaceSymbols(workspace, input);
+      if (!result.ok) return toolFailure(result.error.code, result.error.message);
+      return jsonResult(result);
+    },
+
+    async lspCompletion(input: {
+      path: string;
+      line: number;
+      character: number;
+      paths?: string[];
+      kinds?: CodeSymbol['kind'][];
+      limit?: number;
+    }): Promise<CallToolResult> {
+      const result = await getLspCompletion(workspace, input);
       if (!result.ok) return toolFailure(result.error.code, result.error.message);
       return jsonResult(result);
     },
@@ -403,6 +417,23 @@ export function registerTools(server: McpServer, workspace: Workspace): void {
       }
     },
     handlers.lspWorkspaceSymbols
+  );
+
+  server.registerTool(
+    'lsp_completion',
+    {
+      title: 'LSP completion',
+      description: 'Return workspace symbol completion items for the prefix before a zero-based LSP position.',
+      inputSchema: {
+        path: z.string(),
+        line: lspPositionSchema,
+        character: lspPositionSchema,
+        paths: z.array(z.string()).optional(),
+        kinds: z.array(symbolKindSchema).optional(),
+        limit: z.number().int().positive().max(500).optional()
+      }
+    },
+    handlers.lspCompletion
   );
 
   server.registerTool(

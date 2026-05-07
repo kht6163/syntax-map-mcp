@@ -272,6 +272,33 @@ describe('createToolHandlers', () => {
     });
   });
 
+  it('returns LSP completion items for a source position', async () => {
+    const handlers = await createHandlers();
+
+    const result = await handlers.lspCompletion({
+      path: 'sample.ts',
+      line: 21,
+      character: 3,
+      paths: ['sample.ts']
+    });
+
+    expect(result.structuredContent).toEqual({
+      ok: true,
+      path: 'sample.ts',
+      language: 'typescript',
+      prefix: 'for',
+      isIncomplete: false,
+      items: [
+        {
+          label: 'formatUser',
+          kind: 3,
+          detail: 'function from sample.ts',
+          sortText: 'formatUser'
+        }
+      ]
+    });
+  });
+
   it('returns a tool failure for invalid queries', async () => {
     const handlers = await createHandlers();
 
@@ -410,6 +437,7 @@ describe('createToolHandlers', () => {
       await handlers.lspWorkspaceSymbols({ query: 'Missing', paths: ['missing.ts'] }),
       'FILE_NOT_FOUND'
     );
+    expectToolFailure(await handlers.lspCompletion({ path: 'sample.ts', line: -1, character: 0 }), 'PARSE_ERROR');
     expectToolFailure(await handlers.buildContext({ detail: 'compact' }), 'INDEX_ERROR');
   });
 
@@ -1050,6 +1078,7 @@ describe('registerTools', () => {
       'lsp_references',
       'lsp_hover',
       'lsp_workspace_symbols',
+      'lsp_completion',
       'build_context',
       'index_workspace',
       'search_symbols',

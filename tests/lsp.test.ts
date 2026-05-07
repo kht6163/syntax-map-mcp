@@ -1,6 +1,15 @@
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { getDefinition, getDocumentSymbols, getHover, getReferences, getWorkspaceSymbols } from '../src/analysis/lsp.js';
+import {
+  getCompletion,
+  getDefinition,
+  getDocumentSymbols,
+  getHover,
+  getReferences,
+  getWorkspaceSymbols
+} from '../src/analysis/lsp.js';
 import { createWorkspace } from '../src/workspace.js';
 import type { Workspace } from '../src/workspace.js';
 
@@ -338,6 +347,169 @@ describe('getDocumentSymbols', () => {
       error: {
         code: 'PARSE_ERROR',
         message: 'cannot list files'
+      }
+    });
+  });
+
+  it('returns LSP completion items for the prefix at a source position', async () => {
+    const workspace = await createWorkspace(fixtureRoot);
+
+    const result = await getCompletion(workspace, {
+      path: 'sample.ts',
+      line: 21,
+      character: 3,
+      paths: ['sample.ts']
+    });
+
+    expect(result).toEqual({
+      ok: true,
+      path: 'sample.ts',
+      language: 'typescript',
+      prefix: 'for',
+      isIncomplete: false,
+      items: [
+        {
+          label: 'formatUser',
+          kind: 3,
+          detail: 'function from sample.ts',
+          sortText: 'formatUser'
+        }
+      ]
+    });
+  });
+
+  it('filters and limits LSP completion items', async () => {
+    const workspace = await createWorkspace(fixtureRoot);
+
+    const result = await getCompletion(workspace, {
+      path: 'sample.ts',
+      line: 4,
+      character: 0,
+      paths: ['sample.ts'],
+      kinds: ['class', 'function'],
+      limit: 1
+    });
+
+    expect(result).toEqual({
+      ok: true,
+      path: 'sample.ts',
+      language: 'typescript',
+      prefix: '',
+      isIncomplete: false,
+      items: [
+        {
+          label: 'UserService',
+          kind: 7,
+          detail: 'class from sample.ts',
+          sortText: 'UserService'
+        }
+      ]
+    });
+  });
+
+  it('uses workspace paths by default and stops completion at the limit', async () => {
+    const workspace = await createWorkspace(fixtureRoot);
+
+    const result = await getCompletion(workspace, {
+      path: 'sample.ts',
+      line: 4,
+      character: 0,
+      limit: 1
+    });
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        ok: true,
+        prefix: '',
+        isIncomplete: false,
+        items: [expect.objectContaining({ label: expect.any(String) })]
+      })
+    );
+  });
+
+  it('deduplicates LSP completion items by symbol kind and label', async () => {
+    const root = await mkdtemp(path.join(tmpdir(), 'syntax-map-lsp-completion-dedupe-'));
+
+    try {
+      await writeFile(path.join(root, 'a.ts'), 'export function sharedThing() { return 1; }\n');
+      await writeFile(path.join(root, 'b.ts'), 'export function sharedThing() { return 2; }\n');
+      const workspace = await createWorkspace(root);
+
+      const result = await getCompletion(workspace, {
+        path: 'a.ts',
+        line: 0,
+        character: 22,
+        paths: ['a.ts', 'b.ts']
+      });
+
+      expect(result).toEqual({
+        ok: true,
+        path: 'a.ts',
+        language: 'typescript',
+        prefix: 'shared',
+        isIncomplete: false,
+        items: [
+          {
+            label: 'sharedThing',
+            kind: 3,
+            detail: 'function from a.ts',
+            sortText: 'sharedThing'
+          }
+        ]
+      });
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it('rejects invalid LSP completion positions and limits', async () => {
+    const workspace = await createWorkspace(fixtureRoot);
+
+    await expect(
+      getCompletion(workspace, {
+        path: 'sample.ts',
+        line: -1,
+        character: 0
+      })
+    ).resolves.toEqual({
+      ok: false,
+      error: {
+        code: 'PARSE_ERROR',
+        message: 'line must be a non-negative integer (received -1)'
+      }
+    });
+
+    await expect(
+      getCompletion(workspace, {
+        path: 'sample.ts',
+        line: 0,
+        character: 0,
+        limit: 0
+      })
+    ).resolves.toEqual({
+      ok: false,
+      error: {
+        code: 'PARSE_ERROR',
+        message: 'limit must be an integer between 1 and 500 (received 0)'
+      }
+    });
+  });
+
+  it('propagates workspace failures from LSP completion paths', async () => {
+    const workspace = await createWorkspace(fixtureRoot);
+
+    const result = await getCompletion(workspace, {
+      path: 'sample.ts',
+      line: 21,
+      character: 3,
+      paths: ['missing.ts']
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      error: {
+        code: 'FILE_NOT_FOUND',
+        message: expect.any(String)
       }
     });
   });
