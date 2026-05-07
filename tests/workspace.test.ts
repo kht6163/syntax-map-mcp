@@ -19,6 +19,20 @@ describe('workspace', () => {
     }
   });
 
+  it('reads Rust files inside workspaceRoot', async () => {
+    const root = await mkdtemp(path.join(tmpdir(), 'ts-mcp-rust-root-'));
+    await writeFile(path.join(root, 'sample.rs'), 'pub fn value() -> i32 { 1 }');
+    const workspace = await createWorkspace(root);
+
+    const file = await workspace.readSourceFile('sample.rs');
+
+    expect(file.ok).toBe(true);
+    if (file.ok) {
+      expect(file.relativePath).toBe('sample.rs');
+      expect(file.text).toContain('value');
+    }
+  });
+
   it('rejects paths outside workspaceRoot', async () => {
     const root = await mkdtemp(path.join(tmpdir(), 'ts-mcp-root-'));
     const outside = path.join(await realpath(tmpdir()), 'outside.ts');

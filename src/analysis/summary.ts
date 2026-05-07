@@ -68,6 +68,8 @@ function isImportNode(language: SupportedLanguage, nodeType: string): boolean {
     case 'typescript':
     case 'tsx':
       return nodeType === 'import_statement';
+    case 'rust':
+      return false;
   }
 }
 
@@ -89,6 +91,7 @@ function isExportNode(language: SupportedLanguage, nodeType: string): boolean {
       return nodeType === 'export_statement';
     /* v8 ignore next 2 -- Python exports are handled by findPythonAllExports before this switch. */
     case 'python':
+    case 'rust':
       return false;
   }
 }

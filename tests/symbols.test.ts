@@ -96,6 +96,43 @@ describe('listSymbols', () => {
     );
   });
 
+  it('extracts Rust symbols', async () => {
+    const symbols = listSymbols(await parseFixture('sample.rs'));
+
+    expect(symbolLabels(symbols)).toEqual([
+      'class:User',
+      'class:UserStatus',
+      'function:format_user',
+      'function:let_default_user',
+      'interface:Repository',
+      'method:display_name',
+      'method:find_user',
+      'type:UserId',
+      'variable:DEFAULT_USER_ID'
+    ]);
+
+    expect(symbols.find(symbol => symbol.name === 'display_name')).toEqual(
+      expect.objectContaining({ kind: 'method', parentName: 'User' })
+    );
+    expect(symbols.find(symbol => symbol.name === 'find_user')).toEqual(
+      expect.objectContaining({ kind: 'method', parentName: 'Repository' })
+    );
+  });
+
+  it('excludes Rust extern signatures from method symbols', () => {
+    const symbols = listSymbols(
+      parseInline(
+        'ffi.rs',
+        `extern "C" {
+    fn ffi_call();
+}
+`
+      )
+    );
+
+    expect(symbols).toEqual([]);
+  });
+
   it('classifies nested Python functions as functions', () => {
     const symbols = listSymbols(
       parseInline(

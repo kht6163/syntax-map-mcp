@@ -1,4 +1,4 @@
-export type SupportedLanguage = 'javascript' | 'typescript' | 'tsx' | 'python';
+export type SupportedLanguage = 'javascript' | 'typescript' | 'tsx' | 'python' | 'rust';
 
 export type SourcePosition = {
   row: number;

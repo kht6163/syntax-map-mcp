@@ -49,6 +49,26 @@ describe('getDocumentSymbols', () => {
     );
   });
 
+  it('returns LSP document symbols for a Rust source file', async () => {
+    const workspace = await createWorkspace(fixtureRoot);
+
+    const result = await getDocumentSymbols(workspace, { path: 'sample.rs' });
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        ok: true,
+        path: 'sample.rs',
+        language: 'rust',
+        symbols: expect.arrayContaining([
+          expect.objectContaining({ name: 'User', kind: 5 }),
+          expect.objectContaining({ name: 'Repository', kind: 11 }),
+          expect.objectContaining({ name: 'format_user', kind: 12 }),
+          expect.objectContaining({ name: 'display_name', kind: 6 })
+        ])
+      })
+    );
+  });
+
   it('propagates workspace failures', async () => {
     const workspace = await createWorkspace(fixtureRoot);
 
@@ -83,6 +103,33 @@ describe('getDocumentSymbols', () => {
           range: {
             start: { line: 15, character: 7 },
             end: { line: 17, character: 1 }
+          }
+        }
+      ]
+    });
+  });
+
+  it('returns Rust LSP definition locations for the identifier at a source position', async () => {
+    const workspace = await createWorkspace(fixtureRoot);
+
+    const result = await getDefinition(workspace, {
+      path: 'sample.rs',
+      line: 28,
+      character: 1,
+      paths: ['sample.rs']
+    });
+
+    expect(result).toEqual({
+      ok: true,
+      path: 'sample.rs',
+      language: 'rust',
+      name: 'let_default_user',
+      locations: [
+        {
+          path: 'sample.rs',
+          range: {
+            start: { line: 30, character: 0 },
+            end: { line: 35, character: 1 }
           }
         }
       ]
@@ -153,6 +200,35 @@ describe('getDocumentSymbols', () => {
     );
   });
 
+  it('returns Rust LSP reference locations for the identifier at a source position', async () => {
+    const workspace = await createWorkspace(fixtureRoot);
+
+    const result = await getReferences(workspace, {
+      path: 'sample.rs',
+      line: 28,
+      character: 1,
+      paths: ['sample.rs']
+    });
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        ok: true,
+        path: 'sample.rs',
+        language: 'rust',
+        name: 'let_default_user',
+        locations: expect.arrayContaining([
+          {
+            path: 'sample.rs',
+            range: {
+              start: { line: 28, character: 0 },
+              end: { line: 28, character: 16 }
+            }
+          }
+        ])
+      })
+    );
+  });
+
   it('rejects invalid LSP reference positions', async () => {
     const workspace = await createWorkspace(fixtureRoot);
 
@@ -192,6 +268,32 @@ describe('getDocumentSymbols', () => {
       contents: {
         kind: 'markdown',
         value: '**function** `formatUser`\n\n```typescript\nexport function formatUser(user: User): string {\n```'
+      }
+    });
+  });
+
+  it('returns Rust LSP hover contents for a source position', async () => {
+    const workspace = await createWorkspace(fixtureRoot);
+
+    const result = await getHover(workspace, {
+      path: 'sample.rs',
+      line: 28,
+      character: 1,
+      paths: ['sample.rs']
+    });
+
+    expect(result).toEqual({
+      ok: true,
+      path: 'sample.rs',
+      language: 'rust',
+      name: 'let_default_user',
+      range: {
+        start: { line: 28, character: 0 },
+        end: { line: 28, character: 16 }
+      },
+      contents: {
+        kind: 'markdown',
+        value: '**function** `let_default_user`\n\n```rust\nfn let_default_user() -> User {\n```'
       }
     });
   });
@@ -312,6 +414,57 @@ describe('getDocumentSymbols', () => {
     });
   });
 
+  it('returns Rust LSP workspace symbols matching a query', async () => {
+    const workspace = await createWorkspace(fixtureRoot);
+
+    const result = await getWorkspaceSymbols(workspace, {
+      query: 'user',
+      paths: ['sample.rs']
+    });
+
+    expect(result).toEqual({
+      ok: true,
+      query: 'user',
+      symbols: [
+        expect.objectContaining({
+          name: 'User',
+          kind: 5,
+          location: expect.objectContaining({ path: 'sample.rs' })
+        }),
+        expect.objectContaining({
+          name: 'UserStatus',
+          kind: 5,
+          location: expect.objectContaining({ path: 'sample.rs' })
+        }),
+        expect.objectContaining({
+          name: 'UserId',
+          kind: 26,
+          location: expect.objectContaining({ path: 'sample.rs' })
+        }),
+        expect.objectContaining({
+          name: 'format_user',
+          kind: 12,
+          location: expect.objectContaining({ path: 'sample.rs' })
+        }),
+        expect.objectContaining({
+          name: 'let_default_user',
+          kind: 12,
+          location: expect.objectContaining({ path: 'sample.rs' })
+        }),
+        expect.objectContaining({
+          name: 'find_user',
+          kind: 6,
+          location: expect.objectContaining({ path: 'sample.rs' })
+        }),
+        expect.objectContaining({
+          name: 'DEFAULT_USER_ID',
+          kind: 13,
+          location: expect.objectContaining({ path: 'sample.rs' })
+        })
+      ]
+    });
+  });
+
   it('propagates workspace failures from LSP workspace symbol paths', async () => {
     const workspace = await createWorkspace(fixtureRoot);
 
@@ -374,6 +527,33 @@ describe('getDocumentSymbols', () => {
           kind: 3,
           detail: 'function from sample.ts',
           sortText: 'formatUser'
+        }
+      ]
+    });
+  });
+
+  it('returns Rust LSP completion items for the prefix at a source position', async () => {
+    const workspace = await createWorkspace(fixtureRoot);
+
+    const result = await getCompletion(workspace, {
+      path: 'sample.rs',
+      line: 28,
+      character: 3,
+      paths: ['sample.rs']
+    });
+
+    expect(result).toEqual({
+      ok: true,
+      path: 'sample.rs',
+      language: 'rust',
+      prefix: 'let',
+      isIncomplete: false,
+      items: [
+        {
+          label: 'let_default_user',
+          kind: 3,
+          detail: 'function from sample.rs',
+          sortText: 'let_default_user'
         }
       ]
     });
@@ -536,6 +716,32 @@ describe('getDocumentSymbols', () => {
         {
           label: 'formatUser(user: User): string',
           parameters: [{ label: 'user: User' }]
+        }
+      ]
+    });
+  });
+
+  it('returns Rust LSP signature help for a function call position', async () => {
+    const workspace = await createWorkspace(fixtureRoot);
+
+    const result = await getSignatureHelp(workspace, {
+      path: 'sample.rs',
+      line: 28,
+      character: 17,
+      paths: ['sample.rs']
+    });
+
+    expect(result).toEqual({
+      ok: true,
+      path: 'sample.rs',
+      language: 'rust',
+      name: 'let_default_user',
+      activeSignature: 0,
+      activeParameter: 0,
+      signatures: [
+        {
+          label: 'let_default_user() -> User',
+          parameters: []
         }
       ]
     });

@@ -44,7 +44,7 @@ export async function createServer(options: ServerOptions): Promise<McpServer> {
     await createServerInfo(),
     {
       instructions:
-        'Analyze JavaScript, TypeScript, and Python source files under the configured workspaceRoot only.'
+        'Analyze JavaScript, TypeScript, Python, and Rust source files under the configured workspaceRoot only.'
     }
   );
 

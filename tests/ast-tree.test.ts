@@ -38,6 +38,34 @@ describe('getAstTree', () => {
     );
   });
 
+  it('returns a depth-limited AST tree for a Rust source file', async () => {
+    const workspace = await createWorkspace(fixtureRoot);
+
+    const result = await getAstTree(workspace, { path: 'sample.rs', maxDepth: 1 });
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        ok: true,
+        path: 'sample.rs',
+        language: 'rust',
+        tree: {
+          root: expect.objectContaining({
+            type: 'source_file',
+            named: true,
+            childCount: expect.any(Number),
+            children: expect.arrayContaining([
+              expect.objectContaining({
+                type: 'struct_item',
+                named: true,
+                children: []
+              })
+            ])
+          })
+        }
+      })
+    );
+  });
+
   it('includes node text only when requested', async () => {
     const workspace = await createWorkspace(fixtureRoot);
 

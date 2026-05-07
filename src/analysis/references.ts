@@ -60,6 +60,8 @@ export function referenceQueryForLanguage(language: string): string {
       return '[(identifier) (type_identifier) (property_identifier)] @reference';
     case 'javascript':
       return '[(identifier) (property_identifier)] @reference';
+    case 'rust':
+      return '[(identifier) (type_identifier)] @reference';
     case 'python':
     default:
       return '(identifier) @reference';

@@ -49,6 +49,8 @@ export function detectLanguage(filePath: string): LanguageDetectionResult {
       return { ok: true, language: 'tsx' };
     case '.py':
       return { ok: true, language: 'python' };
+    case '.rs':
+      return { ok: true, language: 'rust' };
     default:
       return {
         ok: false,

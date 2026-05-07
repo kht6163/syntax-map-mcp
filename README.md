@@ -1,6 +1,6 @@
 # syntax-map-mcp
 
-Tree-sitter 기반 코드 분석 MCP 서버입니다. 지정한 `workspaceRoot` 아래의 JavaScript, TypeScript, TSX, Python 소스 파일을 읽고 심볼, 정의, 참조, 요약, tree-sitter query, 컨텍스트 markdown을 제공합니다.
+Tree-sitter 기반 코드 분석 MCP 서버입니다. 지정한 `workspaceRoot` 아래의 JavaScript, TypeScript, TSX, Python, Rust 소스 파일을 읽고 심볼, 정의, 참조, 요약, tree-sitter query, 컨텍스트 markdown을 제공합니다.
 
 ## 설치와 빌드
 
@@ -53,7 +53,7 @@ npx -y syntax-map-mcp --workspace-root /path/to/workspace
 
 ## SQLite 인덱스
 
-`index_workspace`는 `workspaceRoot` 아래의 `.syntax-map-mcp/index.sqlite`에 인덱스를 저장합니다. 인덱싱 대상은 `.js`, `.jsx`, `.ts`, `.tsx`, `.py` 파일이며, `.git`, `.syntax-map-mcp`, `dist`, `node_modules` 디렉터리와 `workspaceRoot` 아래의 `.gitignore` 패턴에 매칭되는 파일은 제외합니다. 하위 디렉터리의 `.gitignore`는 해당 디렉터리 기준으로 적용합니다.
+`index_workspace`는 `workspaceRoot` 아래의 `.syntax-map-mcp/index.sqlite`에 인덱스를 저장합니다. 인덱싱 대상은 `.js`, `.jsx`, `.ts`, `.tsx`, `.py`, `.rs` 파일이며, `.git`, `.syntax-map-mcp`, `dist`, `node_modules` 디렉터리와 `workspaceRoot` 아래의 `.gitignore` 패턴에 매칭되는 파일은 제외합니다. 하위 디렉터리의 `.gitignore`는 해당 디렉터리 기준으로 적용합니다.
 
 파일 변경 여부는 `mtimeMs`와 `size`로 판단합니다. 다시 `index_workspace`를 호출하면 변경된 파일만 재파싱하고, 삭제된 파일은 인덱스에서 제거합니다. `search_symbols`, `find_indexed_definition`, `find_indexed_references`는 `isStale`, `staleFiles`, `refreshed`를 반환해 검색 결과가 최신 인덱스 기반인지 알려줍니다. 세 도구에 `refreshIfStale: true`를 전달하면 stale 파일이 있을 때 먼저 인덱스를 갱신한 뒤 검색합니다. 인덱스 검색 도구는 인덱스에 저장된 위치를 조회한 뒤 현재 파일에서 해당 줄 snippet을 읽어 반환합니다. `contextBefore`, `contextAfter`를 0-10 사이 정수로 전달하면 snippet 주변 라인도 함께 반환합니다. `includePreview: true`를 전달하면 `path:line` 헤더와 코드블록으로 구성된 `previewMarkdown`도 함께 반환합니다. 자동 watch 모드는 아직 포함하지 않았습니다.
 
@@ -89,4 +89,4 @@ Python은 JavaScript/TypeScript처럼 명시적인 `export` 문법이 없으므�
 
 ## 보안 경계
 
-서버는 `workspaceRoot` 내부 파일만 읽습니다. 지원 확장자는 `.js`, `.jsx`, `.ts`, `.tsx`, `.py`뿐이며, workspace 밖으로 나가는 경로나 지원하지 않는 확장자는 오류로 처리합니다.
+서버는 `workspaceRoot` 내부 파일만 읽습니다. 지원 확장자는 `.js`, `.jsx`, `.ts`, `.tsx`, `.py`, `.rs`뿐이며, workspace 밖으로 나가는 경로나 지원하지 않는 확장자는 오류로 처리합니다.

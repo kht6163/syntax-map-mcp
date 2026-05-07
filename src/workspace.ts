@@ -34,7 +34,7 @@ export type Workspace = {
   listSourceFiles(): Promise<WorkspaceFileInfo[]>;
 };
 
-const SUPPORTED_EXTENSIONS = new Set(['.js', '.jsx', '.ts', '.tsx', '.py']);
+const SUPPORTED_EXTENSIONS = new Set(['.js', '.jsx', '.ts', '.tsx', '.py', '.rs']);
 const EXCLUDED_DIRECTORIES = new Set(['.git', '.syntax-map-mcp', 'dist', 'node_modules']);
 
 type GitignoreMatcher = {

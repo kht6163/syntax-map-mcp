@@ -299,7 +299,10 @@ function signatureFromSnippet(name: string, snippet: string): LspSignatureInform
     /^(?:public\s+|private\s+|protected\s+|static\s+|async\s+)*[A-Za-z_$][A-Za-z0-9_$]*\s*\(([^)]*)\)\s*([^{:]*(?::\s*[^{]+)?)[{:]?/
   );
   const pythonMatch = firstLine.match(/^def\s+[A-Za-z_$][A-Za-z0-9_$]*\s*\(([^)]*)\)\s*([^:]*)/);
-  const match = functionMatch ?? pythonMatch ?? methodMatch;
+  const rustMatch = firstLine.match(
+    /^(?:pub\s+)?(?:async\s+)?fn\s+[A-Za-z_$][A-Za-z0-9_$]*\s*\(([^)]*)\)\s*([^{]*)/
+  );
+  const match = functionMatch ?? pythonMatch ?? rustMatch ?? methodMatch;
 
   /* v8 ignore next 6 -- indexed function and method definitions provide recognizable signature snippets. */
   if (!match) {

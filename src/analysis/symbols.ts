@@ -33,6 +33,17 @@ const pythonSymbolPatterns: SymbolPattern[] = [
   { kind: 'variable', query: '(module (expression_statement (assignment left: (identifier) @name) @definition))' }
 ];
 
+const rustSymbolPatterns: SymbolPattern[] = [
+  { kind: 'class', query: '(struct_item name: (type_identifier) @name) @definition' },
+  { kind: 'class', query: '(enum_item name: (type_identifier) @name) @definition' },
+  { kind: 'interface', query: '(trait_item name: (type_identifier) @name) @definition' },
+  { kind: 'type', query: '(type_item name: (type_identifier) @name) @definition' },
+  { kind: 'function', query: '(function_item name: (identifier) @name) @definition' },
+  { kind: 'method', query: '(function_signature_item name: (identifier) @name) @definition' },
+  { kind: 'variable', query: '(const_item name: (identifier) @name) @definition' },
+  { kind: 'variable', query: '(static_item name: (identifier) @name) @definition' }
+];
+
 export function listSymbols(parsed: ParsedSourceFile): CodeSymbol[] {
   return patternsForLanguage(parsed).flatMap(pattern => querySymbols(parsed, pattern));
 }
@@ -46,6 +57,8 @@ function patternsForLanguage(parsed: ParsedSourceFile): SymbolPattern[] {
       return typeScriptSymbolPatterns;
     case 'python':
       return pythonSymbolPatterns;
+    case 'rust':
+      return rustSymbolPatterns;
   }
 }
 
@@ -64,6 +77,9 @@ function querySymbols(parsed: ParsedSourceFile, pattern: SymbolPattern): CodeSym
       isJavaScriptLikeLanguage(parsed) &&
       !directJavaScriptLikeMethodClass(definition)
     ) {
+      return [];
+    }
+    if (pattern.kind === 'method' && parsed.language === 'rust' && !directRustMethodParentName(definition)) {
       return [];
     }
     if (pattern.kind === 'method' && name.text === 'constructor') return [];
@@ -90,6 +106,9 @@ function symbolKind(
   if (parsed.language === 'python' && kind === 'function' && isDirectPythonMethod(definition)) {
     return 'method';
   }
+  if (parsed.language === 'rust' && kind === 'function' && directRustMethodParentName(definition)) {
+    return 'method';
+  }
 
   return kind;
 }
@@ -102,11 +121,12 @@ function parentNameForSymbol(
   if (kind !== 'method') return undefined;
 
   const classNode =
-    parsed.language === 'python'
-      ? directPythonMethodClass(definition)
-      : directJavaScriptLikeMethodClass(definition);
+    parsed.language === 'python' ? directPythonMethodClass(definition) : undefined;
 
-  return classNode?.childForFieldName('name')?.text;
+  if (classNode) return classNode.childForFieldName('name')?.text;
+  if (parsed.language === 'rust') return directRustMethodParentName(definition);
+
+  return directJavaScriptLikeMethodClass(definition)?.childForFieldName('name')?.text;
 }
 
 function isJavaScriptLikeLanguage(parsed: ParsedSourceFile): boolean {
@@ -119,6 +139,8 @@ function isJavaScriptLikeLanguage(parsed: ParsedSourceFile): boolean {
 }
 
 function isTopLevelVariableDefinition(definition: Parser.SyntaxNode): boolean {
+  if (definition.parent?.type === 'source_file') return true;
+
   const statement = definition.parent;
   /* v8 ignore next -- tree-sitter variable definitions always have a parent statement. */
   if (!statement) return false;
@@ -162,6 +184,17 @@ function directJavaScriptLikeMethodClass(
   }
 
   return classNode;
+}
+
+function directRustMethodParentName(definition: Parser.SyntaxNode): string | undefined {
+  const declarationList = definition.parent;
+  const parentNode = declarationList?.parent;
+
+  if (declarationList?.type !== 'declaration_list') return undefined;
+  if (parentNode?.type === 'trait_item') return parentNode.childForFieldName('name')?.text;
+  if (parentNode?.type !== 'impl_item') return undefined;
+
+  return parentNode.namedChildren.find(child => child.type === 'type_identifier')?.text;
 }
 
 function rangeForNode(node: Parser.SyntaxNode): SourceRange {

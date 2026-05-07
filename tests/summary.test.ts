@@ -149,6 +149,19 @@ describe('summarizeFile', () => {
     }
   });
 
+  it('summarizes Rust symbols without imports or exports', async () => {
+    const workspace = await createWorkspace(fixtureRoot);
+    const summary = await summarizeFile(workspace, 'sample.rs');
+
+    expect(summary.ok).toBe(true);
+    if (summary.ok) {
+      expect(summary.language).toBe('rust');
+      expect(summary.imports).toEqual([]);
+      expect(summary.exports).toEqual([]);
+      expect(summary.symbols.map(symbol => symbol.name)).toContain('User');
+    }
+  });
+
   it('propagates failures from invalid paths', async () => {
     const workspace = await createWorkspace(fixtureRoot);
     const summary = await summarizeFile(workspace, 'missing.ts');

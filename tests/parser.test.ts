@@ -10,7 +10,8 @@ describe('parser', () => {
     ['sample.js', 'javascript'],
     ['sample.ts', 'typescript'],
     ['sample.tsx', 'tsx'],
-    ['sample.py', 'python']
+    ['sample.py', 'python'],
+    ['sample.rs', 'rust']
   ] as const)('detects %s as %s', (fileName, expectedLanguage) => {
     expect(detectLanguage(fileName)).toEqual({ ok: true, language: expectedLanguage });
   });
@@ -29,7 +30,8 @@ describe('parser', () => {
     ['sample.js', 'javascript', 'program'],
     ['sample.ts', 'typescript', 'program'],
     ['sample.tsx', 'tsx', 'program'],
-    ['sample.py', 'python', 'module']
+    ['sample.py', 'python', 'module'],
+    ['sample.rs', 'rust', 'source_file']
   ] as const)('parses %s as %s with %s root', async (fileName, expectedLanguage, expectedRoot) => {
     const workspace = await createWorkspace(fixtureRoot);
     const file = await workspace.readSourceFile(fileName);

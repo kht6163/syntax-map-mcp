@@ -14,13 +14,15 @@ type TypeScriptGrammars = {
 
 const javascript = require('tree-sitter-javascript') as Grammar;
 const python = require('tree-sitter-python') as Grammar;
+const rust = require('tree-sitter-rust') as Grammar;
 const typescript = require('tree-sitter-typescript') as TypeScriptGrammars;
 
 const languages: Record<SupportedLanguage, unknown> = {
   javascript,
   typescript: typescript.typescript,
   tsx: typescript.tsx,
-  python
+  python,
+  rust
 };
 
 export function languageForName(language: SupportedLanguage): unknown {
