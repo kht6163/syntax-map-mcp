@@ -2,3 +2,7 @@ node_modules/
 dist/
 .syntax-map-mcp/
 .env
+coverage/
+*.tgz
+npm-debug.log*
+.DS_Store
