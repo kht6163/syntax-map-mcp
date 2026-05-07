@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.2.0 - 2026-05-07
+
 - `get_ast_tree` 도구를 추가해 지원 소스 파일의 tree-sitter AST를 depth 제한 JSON 트리로 반환하도록 했습니다.
 
 ## 0.1.9 - 2026-05-07
