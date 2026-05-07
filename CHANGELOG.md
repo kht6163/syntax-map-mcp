@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- `docs/tools.md`의 도구 목록이 실제 MCP `listTools()` 응답과 일치하는지 검증하도록 했습니다.
 - MCP `listTools()` 응답의 공개 tool 이름과 주요 input schema 필드를 검증하는 테스트를 추가했습니다.
 - `release:check`가 npm 패키지를 tarball로 설치한 뒤 MCP 초기화 응답을 확인하는 smoke test를 실행하도록 했습니다.
 

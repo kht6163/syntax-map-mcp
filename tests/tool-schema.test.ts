@@ -1,9 +1,24 @@
+import { readFile } from 'node:fs/promises';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { describe, expect, it } from 'vitest';
 import { createServer } from '../src/server.js';
 
 const fixtureRoot = `${process.cwd()}/tests/fixtures`;
+const publicToolNames = [
+  'list_symbols',
+  'find_definition',
+  'find_references',
+  'summarize_file',
+  'run_query',
+  'build_context',
+  'index_workspace',
+  'search_symbols',
+  'find_indexed_definition',
+  'find_indexed_references',
+  'get_index_status',
+  'clear_index'
+];
 
 async function listPublicTools() {
   const server = await createServer({ workspaceRoot: fixtureRoot });
@@ -24,20 +39,7 @@ describe('MCP tool schema', () => {
   it('exposes the public tool names through listTools', async () => {
     const tools = await listPublicTools();
 
-    expect(tools.map(tool => tool.name)).toEqual([
-      'list_symbols',
-      'find_definition',
-      'find_references',
-      'summarize_file',
-      'run_query',
-      'build_context',
-      'index_workspace',
-      'search_symbols',
-      'find_indexed_definition',
-      'find_indexed_references',
-      'get_index_status',
-      'clear_index'
-    ]);
+    expect(tools.map(tool => tool.name)).toEqual(publicToolNames);
   });
 
   it('exposes the expected input schema fields through listTools', async () => {
@@ -90,5 +92,12 @@ describe('MCP tool schema', () => {
       expect(Object.keys(tool?.inputSchema.properties ?? {}), name).toEqual(expectation.properties);
       expect(tool?.inputSchema.required ?? [], name).toEqual(expectation.required ?? []);
     }
+  });
+
+  it('documents every public tool in docs/tools.md', async () => {
+    const markdown = await readFile('docs/tools.md', 'utf8');
+    const documentedToolNames = Array.from(markdown.matchAll(/^## ([a-z_]+)$/gm), match => match[1]);
+
+    expect(documentedToolNames).toEqual(publicToolNames);
   });
 });

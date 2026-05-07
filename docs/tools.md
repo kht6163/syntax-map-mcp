@@ -2,6 +2,87 @@
 
 syntax-map-mcp의 주요 MCP 도구 입력과 응답 예시입니다. 응답 예시는 핵심 필드만 보여줍니다.
 
+## list_symbols
+
+입력:
+
+```json
+{
+  "path": "src/index.ts"
+}
+```
+
+응답 일부:
+
+```json
+{
+  "ok": true,
+  "path": "src/index.ts",
+  "language": "typescript",
+  "symbols": [
+    {
+      "name": "main",
+      "kind": "function",
+      "line": 3,
+      "column": 1
+    }
+  ]
+}
+```
+
+## find_definition
+
+입력:
+
+```json
+{
+  "name": "UserService",
+  "paths": ["src/users.ts", "src/index.ts"],
+  "kinds": ["class"]
+}
+```
+
+응답 일부:
+
+```json
+{
+  "ok": true,
+  "definitions": [
+    {
+      "path": "src/users.ts",
+      "name": "UserService",
+      "kind": "class"
+    }
+  ]
+}
+```
+
+## find_references
+
+입력:
+
+```json
+{
+  "name": "formatUser",
+  "paths": ["src/users.ts", "src/index.ts"]
+}
+```
+
+응답 일부:
+
+```json
+{
+  "ok": true,
+  "references": [
+    {
+      "path": "src/index.ts",
+      "name": "formatUser",
+      "nodeType": "identifier"
+    }
+  ]
+}
+```
+
 ## summarize_file
 
 입력:
@@ -26,6 +107,118 @@ syntax-map-mcp의 주요 MCP 도구 입력과 응답 예시입니다. 응답 예
     "imports": "ast",
     "exports": "ast"
   }
+}
+```
+
+## run_query
+
+입력:
+
+```json
+{
+  "path": "src/users.ts",
+  "query": "(class_declaration name: (type_identifier) @class.name)"
+}
+```
+
+응답 일부:
+
+```json
+{
+  "ok": true,
+  "matches": [
+    {
+      "pattern": 0,
+      "captures": [
+        {
+          "name": "class.name",
+          "text": "UserService"
+        }
+      ]
+    }
+  ]
+}
+```
+
+## build_context
+
+파일 경로 기반 입력:
+
+```json
+{
+  "paths": ["src/users.ts", "src/index.ts"],
+  "detail": "compact"
+}
+```
+
+인덱스 심볼 검색 기반 입력:
+
+```json
+{
+  "detail": "compact",
+  "maxFiles": 3,
+  "indexedSearch": {
+    "query": "UserService",
+    "kinds": ["class"],
+    "refreshIfStale": true,
+    "contextBefore": 1,
+    "contextAfter": 1
+  }
+}
+```
+
+인덱스 참조 검색 기반 입력:
+
+```json
+{
+  "detail": "compact",
+  "maxFiles": 3,
+  "indexedSearch": {
+    "mode": "references",
+    "name": "formatUser",
+    "refreshIfStale": true,
+    "contextBefore": 1,
+    "contextAfter": 1
+  }
+}
+```
+
+응답 일부:
+
+```json
+{
+  "ok": true,
+  "metadata": {
+    "indexedSearchMode": "symbols",
+    "indexPath": "/workspace/.syntax-map-mcp/index.sqlite",
+    "isStale": false,
+    "staleFiles": 0,
+    "refreshed": true,
+    "total": 1,
+    "summarizedFiles": 1,
+    "omittedFiles": 0
+  },
+  "markdown": "# Code Context\n\n## Indexed Search Results\n\n### UserService\n\nsrc/users.ts:8\n\n```typescript\nexport class UserService {\n```"
+}
+```
+
+## index_workspace
+
+입력:
+
+```json
+{}
+```
+
+응답 일부:
+
+```json
+{
+  "ok": true,
+  "indexedFiles": 12,
+  "symbols": 84,
+  "references": 231,
+  "indexPath": "/workspace/.syntax-map-mcp/index.sqlite"
 }
 ```
 
@@ -125,68 +318,6 @@ syntax-map-mcp의 주요 MCP 도구 입력과 응답 예시입니다. 응답 예
 }
 ```
 
-## build_context
-
-파일 경로 기반 입력:
-
-```json
-{
-  "paths": ["src/users.ts", "src/index.ts"],
-  "detail": "compact"
-}
-```
-
-인덱스 심볼 검색 기반 입력:
-
-```json
-{
-  "detail": "compact",
-  "maxFiles": 3,
-  "indexedSearch": {
-    "query": "UserService",
-    "kinds": ["class"],
-    "refreshIfStale": true,
-    "contextBefore": 1,
-    "contextAfter": 1
-  }
-}
-```
-
-인덱스 참조 검색 기반 입력:
-
-```json
-{
-  "detail": "compact",
-  "maxFiles": 3,
-  "indexedSearch": {
-    "mode": "references",
-    "name": "formatUser",
-    "refreshIfStale": true,
-    "contextBefore": 1,
-    "contextAfter": 1
-  }
-}
-```
-
-응답 일부:
-
-```json
-{
-  "ok": true,
-  "metadata": {
-    "indexedSearchMode": "symbols",
-    "indexPath": "/workspace/.syntax-map-mcp/index.sqlite",
-    "isStale": false,
-    "staleFiles": 0,
-    "refreshed": true,
-    "total": 1,
-    "summarizedFiles": 1,
-    "omittedFiles": 0
-  },
-  "markdown": "# Code Context\n\n## Indexed Search Results\n\n### UserService\n\nsrc/users.ts:8\n\n```typescript\nexport class UserService {\n```"
-}
-```
-
 ## get_index_status
 
 입력:
@@ -204,5 +335,23 @@ syntax-map-mcp의 주요 MCP 도구 입력과 응답 예시입니다. 응답 예
   "symbols": 84,
   "references": 231,
   "staleFiles": 0
+}
+```
+
+## clear_index
+
+입력:
+
+```json
+{}
+```
+
+응답 일부:
+
+```json
+{
+  "ok": true,
+  "indexPath": "/workspace/.syntax-map-mcp/index.sqlite",
+  "deleted": true
 }
 ```
