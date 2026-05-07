@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.9.0 - 2026-05-07
+
+- `lsp_signature_help` 도구를 추가해 함수 호출 위치의 활성 signature와 parameter 정보를 반환하도록 했습니다.
+
 ## 0.8.0 - 2026-05-07
 
 - `lsp_completion` 도구를 추가해 LSP 위치 앞 prefix에 맞는 workspace 심볼 completion item을 반환하도록 했습니다.
