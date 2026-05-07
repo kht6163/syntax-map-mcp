@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- `release:check`가 npm 패키지를 tarball로 설치한 뒤 MCP 초기화 응답을 확인하는 smoke test를 실행하도록 했습니다.
+
 ## 0.1.7 - 2026-05-07
 
 - `release:check`가 npm 패키징 dry-run 결과의 필수 파일 포함 여부를 자동 검증하도록 했습니다.
